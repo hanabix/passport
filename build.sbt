@@ -17,12 +17,12 @@ lazy val root = (project in file("."))
     dockerRepository := sys.props.get("docker.repository"),
     version in Docker := sys.props.get("docker.tag").getOrElse(version.value),
     libraryDependencies ++= Seq(
-      "com.github.zhongl.akka-stream-oauth2" %% "dingtalk"               % "0e739e4b00",
-      "com.typesafe.akka"                    %% "akka-http-testkit"    % akkaHttpVersion % Test,
-      "com.typesafe.akka"                    %% "akka-testkit"         % akkaVersion % Test,
-      "com.typesafe.akka"                    %% "akka-stream-testkit"  % akkaVersion % Test,
-      "org.scalatest"                        %% "scalatest"            % "3.0.4" % Test,
-      "org.mockito"                          % "mockito-core"          % "2.19.0" % Test
+      "com.github.zhongl.akka-stream-oauth2" %% "dingtalk"            % "0.1.4",
+      "com.typesafe.akka"                    %% "akka-http-testkit"   % akkaHttpVersion % Test,
+      "com.typesafe.akka"                    %% "akka-testkit"        % akkaVersion % Test,
+      "com.typesafe.akka"                    %% "akka-stream-testkit" % akkaVersion % Test,
+      "org.scalatest"                        %% "scalatest"           % "3.0.4" % Test,
+      "org.mockito"                          % "mockito-core"         % "2.19.0" % Test
     )
   )
   .enablePlugins(JavaAppPackaging, AshScriptPlugin, DockerSpotifyClientPlugin)
