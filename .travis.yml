@@ -1,0 +1,23 @@
+language: scala
+
+services:
+  - docker
+
+scala:
+  - 2.12.8
+
+jdk:
+  - oraclejdk8
+
+script:
+  - sbt clean coverage test coverageReport && sbt coverageAggregate
+  - sbt docker:publishLocal
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  - docker push
+
+after_success:
+  - sbt coveralls
+
+notifications:
+  email:
+  - zhong.lunfu@gmail.com
