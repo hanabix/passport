@@ -10,10 +10,10 @@ jdk:
   - oraclejdk8
 
 script:
-  - sbt clean coverage test coverageReport && sbt coverageAggregate
+  - sbt clean coverage test coverageReport
   - sbt docker:publishLocal
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-  - docker push
+  - docker push zhongl/passport
 
 after_success:
   - sbt coveralls
