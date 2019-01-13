@@ -11,7 +11,7 @@ jdk:
 
 script:
   - sbt clean coverage test coverageReport
-  - sbt docker:publishLocal
+  - sbt -Ddocker.repository=zhongl docker:publishLocal
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
   - docker push zhongl/passport
 
