@@ -9,14 +9,19 @@ scala:
 jdk:
   - oraclejdk8
 
-script:
-  - sbt clean coverage test coverageReport
-  - sbt -Ddocker.repository=zhongl docker:publishLocal
-  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-  - docker push zhongl/passport
-
-after_success:
-  - sbt coveralls
+jobs:
+  include:
+    - stage: test
+      name: "test and report coverage"
+      script: sbt clean coverage test coverageReport
+      after_success: sbt coveralls
+    - stage: deploy
+      name: "build and push docker image"
+      if: tag IS present
+      script:
+      - sbt -Ddocker.repository=zhongl docker:publishLocal
+      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      - docker push zhongl/passport
 
 notifications:
   email:
