@@ -13,6 +13,7 @@ jobs:
   include:
     - stage: test
       name: "test and report coverage"
+      if: tag IS blank
       script: sbt clean coverage test coverageReport
       after_success: sbt coveralls
     - stage: deploy
