@@ -21,6 +21,7 @@ jobs:
       script:
       - sbt -Ddocker.repository=zhongl -Ddocker.tag=$TRAVIS_TAG docker:publishLocal
       - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      - docker tag zhongl/passport:$TRAVIS_TAG zhongl/passport:latest
       - docker push zhongl/passport
 
 notifications:
