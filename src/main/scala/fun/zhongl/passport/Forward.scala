@@ -1,7 +1,7 @@
 package fun.zhongl.passport
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.model.StatusCodes.{Success => _, _}
 import akka.http.scaladsl.model.Uri.Authority
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers._
@@ -10,7 +10,7 @@ import fun.zhongl.passport.NetworkInterfaces._
 
 import scala.collection.immutable
 import scala.concurrent.Future
-import scala.util.Try
+import scala.util._
 import scala.util.control.NoStackTrace
 
 object Forward {
@@ -28,8 +28,13 @@ object Forward {
 
     req =>
       Try {
-        Http().singleRequest(req.headers.foldLeft[Rewrite](rewrite)((r, h) => r.update(h))(req))
-      }.recover { case r: Responsible => FastFuture.successful(r.response) }.get
+        Http().singleRequest(req.headers.foldLeft(rewrite)((r, h) => r.update(h))(req))
+      }.recover {
+        case r: Responsible => FastFuture.successful(r.response)
+      } match {
+        case Success(fr)    => fr
+        case Failure(cause) => FastFuture.successful(HttpResponse(InternalServerError, entity = s"$cause"))
+      }
   }
 
   trait Rewrite {
