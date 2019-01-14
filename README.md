@@ -1,3 +1,7 @@
+[![Build Status](https://travis-ci.org/zhongl/passport.svg?branch=master)](https://travis-ci.org/zhongl/passport)
+[![Coverage Status](https://coveralls.io/repos/github/zhongl/passport/badge.svg?branch=master)](https://coveralls.io/github/zhongl/passport?branch=master)
+
+
 Passport 是一个超轻量级统一认证网关, 面向使用 [钉钉](https://www.dingtalk.com) 或是 [企业微信](https://work.weixin.qq.com/) 的创业团队提供手机扫码登录访问内部服务.
 
 # 部署
