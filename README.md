@@ -56,7 +56,7 @@ wechat {
 ## 运行
 
 ```sh
-docker run -v $(pwd)/app.conf:/app.conf -e JAVA_OPTS=-Dconfig.file=/app.conf zhongl/passport:0.0.1
+docker run -v $(pwd)/app.conf:/app.conf -e JAVA_OPTS=-Dconfig.file=/app.conf zhongl/passport:${TAG_NAME}
 ```
 
 # 应用集成
