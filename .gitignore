@@ -1,4 +1,5 @@
 .idea
 target/
-ding*
+ding
+ding.cfg
 app.conf
