@@ -58,8 +58,20 @@ wechat {
 ## 运行
 
 ```sh
-docker run -v $(pwd)/app.conf:/app.conf -e JAVA_OPTS=-Dconfig.file=/app.conf zhongl/passport:${TAG_NAME}
+docker run -d -v $(pwd)/app.conf:/app.conf -e JAVA_OPTS=-Dconfig.file=/app.conf zhongl/passport:${TAG_NAME}
 ```
+
+## Echo调试
+
+若需要在真正部署之前进行调试验证, 可在运行时指定`-e`:
+
+```sh
+docker run --rm -v $(pwd)/app.conf:/app.conf -e JAVA_OPTS=-Dconfig.file=/app.conf zhongl/passport:${TAG_NAME} -e
+```
+
+开启**Echo**模式, 即扫码登录后 Passport 不转发请求, 而是显示当前用户信息.
+
+> `--help` 查看更多帮助
 
 # 应用集成
 
