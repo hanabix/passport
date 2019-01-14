@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/zhongl/passport.svg?branch=master)](https://travis-ci.org/zhongl/passport)
+[![Docker Version](https://img.shields.io/github/tag/zhongl/passport.svg)](https://hub.docker.com/r/zhongl/passport)
 [![Coverage Status](https://coveralls.io/repos/github/zhongl/passport/badge.svg?branch=master)](https://coveralls.io/github/zhongl/passport?branch=master)
 
 
