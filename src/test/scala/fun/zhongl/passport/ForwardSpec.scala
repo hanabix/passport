@@ -1,17 +1,18 @@
 package fun.zhongl.passport
-import java.net.InetAddress
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{HttpRequest, RemoteAddress, Uri}
+import akka.http.javadsl.model
+import akka.http.scaladsl.TimeoutAccess
 import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.model.Uri.Authority
 import akka.http.scaladsl.model.headers._
-import fun.zhongl.passport.Forward.{DefaultRewrite, MissingRemoteAddressException}
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
+import akka.japi
+import fun.zhongl.passport.Forward.{DefaultRewrite, Rewrite}
 import fun.zhongl.passport.NetworkInterfaces._
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
 
 import scala.concurrent.Await
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 
 class ForwardSpec extends WordSpec with Matchers with BeforeAndAfterAll {
 
@@ -33,28 +34,51 @@ class ForwardSpec extends WordSpec with Matchers with BeforeAndAfterAll {
 
     "add forwarded for" in {
       maybeAddress.foreach { addr =>
-        val host   = Uri.Host("a.b")
+        val host   = Host(Uri.Host("a.b"))
         val client = "192.168.2.1"
-        val req    = DefaultRewrite(Some(Authority(host)), addr, Some(client), None, List.empty)(HttpRequest(uri = "http://b.c"))
 
-        req shouldBe HttpRequest(uri = s"http://$host", headers = List(`X-Forwarded-For`(client, addr)))
+        val rewrite = List(`Remote-Address`(client), host)
+          .foldLeft[Rewrite](DefaultRewrite(None, addr, None, None, List.empty))(_.update(_))
+
+        val req = rewrite(HttpRequest(uri = "http://b.c"))
+
+        req shouldBe HttpRequest(uri = s"http://${host.host}", headers = List(host, `X-Forwarded-For`(client, addr)))
       }
     }
 
     "append forwarded for" in {
       maybeAddress.foreach { addr =>
-        val host                  = Uri.Host("a.b")
-        val client: RemoteAddress = "192.168.2.67"
-        val proxy: RemoteAddress  = "192.168.2.1"
-        val xForwardedFor         = `X-Forwarded-For`(client, proxy)
-        val req                   = DefaultRewrite(Some(Authority(host)), addr, None, Some(xForwardedFor), List.empty)(HttpRequest(uri = "http://b.c"))
-        req shouldBe HttpRequest(uri = s"http://$host", headers = List(`X-Forwarded-For`(client, proxy, addr)))
+        val host   = Host(Uri.Host("a.b"))
+        val client = "192.168.2.67"
+        val proxy  = "192.168.2.1"
+
+        val rewrite = List(host, `X-Forwarded-For`(client, proxy))
+          .foldLeft[Rewrite](DefaultRewrite(None, addr, None, None, List.empty))(_.update(_))
+
+        val req = rewrite(HttpRequest(uri = "http://b.c"))
+        req shouldBe HttpRequest(uri = s"http://${host.host}", headers = List(host, `X-Forwarded-For`(client, proxy, addr)))
       }
     }
 
     "complain missing remote address header" in {
       Await.result(Forward.handle.apply(HttpRequest(headers = List(Host(Uri.Host("a.b"))))), Duration.Inf).status shouldBe InternalServerError
     }
+
+    "Exclude Timeout-Access header" in {
+      maybeAddress.foreach { addr =>
+        val ta = new TimeoutAccess {
+          override def timeout: Duration                                                                              = 1.hour
+          override def updateTimeout(timeout: Duration): Unit                                                         = {}
+          override def updateHandler(handler: HttpRequest => HttpResponse): Unit                                      = {}
+          override def update(timeout: Duration, handler: HttpRequest => HttpResponse): Unit                          = {}
+          override def updateHandler(handler: japi.Function[model.HttpRequest, model.HttpResponse]): Unit             = {}
+          override def update(timeout: Duration, handler: japi.Function[model.HttpRequest, model.HttpResponse]): Unit = {}
+        }
+        val rewrite = DefaultRewrite(None, addr, None, None, List.empty)
+        rewrite.update(`Timeout-Access`(ta)) shouldBe rewrite
+      }
+    }
+
   }
 
   override protected def afterAll(): Unit = system.terminate()
