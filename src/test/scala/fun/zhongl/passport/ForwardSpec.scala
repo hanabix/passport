@@ -64,7 +64,7 @@ class ForwardSpec extends WordSpec with Matchers with BeforeAndAfterAll {
       Await.result(Forward.handle.apply(HttpRequest(headers = List(Host(Uri.Host("a.b"))))), Duration.Inf).status shouldBe InternalServerError
     }
 
-    "Exclude Timeout-Access header" in {
+    "exclude Timeout-Access header" in {
       maybeAddress.foreach { addr =>
         val ta = new TimeoutAccess {
           override def timeout: Duration                                                                              = 1.hour
