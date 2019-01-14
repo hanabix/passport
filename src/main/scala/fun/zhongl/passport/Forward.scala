@@ -26,15 +26,15 @@ object Forward {
     val rewrite: Rewrite = DefaultRewrite(None, local, None, None, List.empty)
 
     req =>
-      try {
+      Try {
         Http().singleRequest(req.headers.foldLeft[Rewrite](rewrite)((r, h) => r.update(h))(req))
-      } catch {
+      }.recover {
         case LoopDetectException(addresses) => FastFuture.successful(HttpResponse(LoopDetected, entity = HttpEntity(s"$addresses")))
         case MissingHostException           => FastFuture.successful(HttpResponse(BadRequest, entity = HttpEntity(s"Missing host header")))
         case MissingRemoteAddressException  => FastFuture.successful(HttpResponse(InternalServerError, entity = HttpEntity("Missing remote address")))
         case t: Throwable                   => FastFuture.successful(HttpResponse(InternalServerError, entity = HttpEntity(t.getMessage)))
         // TODO print stacktrace and return error identity
-      }
+      }.get
   }
 
   trait Rewrite {
