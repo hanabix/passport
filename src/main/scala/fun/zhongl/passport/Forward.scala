@@ -16,6 +16,7 @@ import scala.util.control.NoStackTrace
 object Forward {
 
   def handle(implicit system: ActorSystem): HttpRequest => Future[HttpResponse] = {
+
     @inline
     def local =
       Try { system.settings.config.getString("forward.network.interface") }.toOption
@@ -28,13 +29,7 @@ object Forward {
     req =>
       Try {
         Http().singleRequest(req.headers.foldLeft[Rewrite](rewrite)((r, h) => r.update(h))(req))
-      }.recover {
-        case LoopDetectException(addresses) => FastFuture.successful(HttpResponse(LoopDetected, entity = HttpEntity(s"$addresses")))
-        case MissingHostException           => FastFuture.successful(HttpResponse(BadRequest, entity = HttpEntity(s"Missing host header")))
-        case MissingRemoteAddressException  => FastFuture.successful(HttpResponse(InternalServerError, entity = HttpEntity("Missing remote address")))
-        case t: Throwable                   => FastFuture.successful(HttpResponse(InternalServerError, entity = HttpEntity(t.getMessage)))
-        // TODO print stacktrace and return error identity
-      }.get
+      }.recover { case r: Responsible => FastFuture.successful(r.response) }.get
   }
 
   trait Rewrite {
@@ -42,9 +37,18 @@ object Forward {
     def apply(request: HttpRequest): HttpRequest
   }
 
-  final case class LoopDetectException(addresses: Seq[RemoteAddress]) extends NoStackTrace
-  final case object MissingHostException                              extends NoStackTrace
-  final case object MissingRemoteAddressException                     extends NoStackTrace
+  trait Responsible extends NoStackTrace {
+    def response: HttpResponse
+  }
+  final case class LoopDetectException(addresses: Seq[RemoteAddress]) extends Responsible {
+    override def response: HttpResponse = HttpResponse(LoopDetected, entity = s"Loop detected: ${addresses.mkString(",")}")
+  }
+  final case object MissingHostException extends Responsible {
+    override def response: HttpResponse = HttpResponse(BadRequest, entity = s"Missing host header")
+  }
+  final case object MissingRemoteAddressException extends Responsible {
+    override def response: HttpResponse = HttpResponse(InternalServerError, entity = "Missing remote address")
+  }
 
   final case class DefaultRewrite(authority: Option[Authority],
                                   local: RemoteAddress,
