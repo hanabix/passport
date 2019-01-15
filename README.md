@@ -8,11 +8,12 @@ Passport 是一个超轻量级统一认证网关, 面向使用 [钉钉](https://
 
 # 部署
 
-## passport.conf
+## 配置 app.conf
 
 ### 钉钉
 
 ```conf
+// app.conf
 include "dingtalk.conf"
 
 cookie {
@@ -39,6 +40,7 @@ dingtalk {
 ### 企业微信
 
 ```conf
+// app.conf
 include "wechat.conf"
 
 cookie {
