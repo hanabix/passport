@@ -24,7 +24,7 @@ object Echo extends Directives {
                   |    <h1>${info}</h1>
                   |  </body>
                   |</html>
-             """.stripMargin
+                  |""".stripMargin
       complete(HttpEntity(`text/html(UTF-8)`, html))
     })
   }

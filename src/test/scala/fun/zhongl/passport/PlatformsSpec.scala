@@ -1,13 +1,28 @@
 package fun.zhongl.passport
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.HttpRequest
-import akka.http.scaladsl.model.headers.Cookie
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.{Cookie, Location}
+import akka.http.scaladsl.util.FastFuture
+import com.auth0.jwt.JWT
 import com.typesafe.config.ConfigFactory
+import fun.zhongl.passport.Platforms.{Authenticated, Builder, Extractor, Platform}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
-import zhongl.stream.oauth2.{JwtCookie, dingtalk, wechat}
+import zhongl.stream.oauth2.{OAuth2, dingtalk, wechat}
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 class PlatformsSpec extends WordSpec with Matchers with BeforeAndAfterAll {
   implicit val system = ActorSystem(getClass.getSimpleName)
+
+  private val jc = JwtCookies.load(ConfigFactory.parseString(
+    """
+      |include "common.conf"
+      |cookie {
+      | domain = ".a.b"
+      | secret = "***"
+      |}
+    """.stripMargin))
 
   "Platforms" should {
     "load dingtalk" in {
@@ -27,7 +42,6 @@ class PlatformsSpec extends WordSpec with Matchers with BeforeAndAfterAll {
     }
 
     "have ding" in {
-      val jc              = JwtCookie("n", "d")
       val info            = dingtalk.UserInfo("1", "n", "e", Seq(1), "a", true, Seq.empty)
       val signature       = Platforms.ding.builder(info).sign(jc.algorithm)
       val maybeDecodedJWT = jc.unapply(HttpRequest(headers = List(Cookie(jc.name, signature))))
@@ -35,11 +49,50 @@ class PlatformsSpec extends WordSpec with Matchers with BeforeAndAfterAll {
     }
 
     "have wework" in {
-      val jc              = JwtCookie("n", "d")
       val info            = wechat.UserInfo("1", "n", Seq(1), "e", "a", 0, 0, 0, "")
       val signature       = Platforms.wework.builder(info).sign(jc.algorithm)
       val maybeDecodedJWT = jc.unapply(HttpRequest(headers = List(Cookie(jc.name, signature))))
       maybeDecodedJWT.map(Platforms.wework.extractor).foreach(_ shouldBe info)
+    }
+
+    "return auto redirect html" in {
+      val builder: Builder[String]     = s => JWT.create().withSubject(s)
+      val extractor: Extractor[String] = j => j.getSubject
+      val p = new Platform[String, dingtalk.AccessToken](builder, extractor) {
+        override protected def concrete(authenticated: Authenticated[String])(implicit system: ActorSystem) =
+          new OAuth2[dingtalk.AccessToken] {
+            override def refresh = {
+              FastFuture.successful(dingtalk.AccessToken("token", 7200))
+            }
+
+            override def authenticate(token: dingtalk.AccessToken, authorized: HttpRequest) = {
+              FastFuture.successful(authenticated("", Uri("http://auto.redirect")))
+            }
+
+            override def authorization(state: String) = Location(Uri())
+
+            override def redirect = Uri()
+          }
+      }
+
+      val o = p.oauth2(jc.generate)
+      val t = Await.result(o.refresh, Duration.Inf)
+      val f = o.authenticate(t, HttpRequest())
+
+      val r = Await.result(f, Duration.Inf)
+      r.status shouldBe StatusCodes.OK
+      r.entity shouldBe HttpEntity(
+        ContentTypes.`text/html(UTF-8)`,
+        """
+          |<html>
+          |  <head></head>
+          |  <body>
+          |    <h1><a href="http://auto.redirect">http://auto.redirect</a></h1>
+          |    <script>window.location.assign("http://auto.redirect")</script>
+          |  </body>
+          |</html>
+          |""".stripMargin
+      )
     }
   }
 

@@ -8,11 +8,11 @@ import akka.http.scaladsl.server.Directive1
 import com.auth0.jwt.interfaces.DecodedJWT
 import com.auth0.jwt.{JWT, JWTCreator}
 import com.typesafe.config.Config
+import fun.zhongl.passport.Echo.cookie
 import spray.json._
 import zhongl.stream.oauth2.FreshToken.Token
-import zhongl.stream.oauth2.{OAuth2, dingtalk, wechat}
-import fun.zhongl.passport.Echo.cookie
 import zhongl.stream.oauth2.dingtalk.JsonSupport
+import zhongl.stream.oauth2.{OAuth2, dingtalk, wechat}
 
 object Platforms {
 
@@ -45,7 +45,7 @@ object Platforms {
              |    <script>window.location.assign("${location.toString()}")</script>
              |  </body>
              |</html>
-     """.stripMargin
+             |""".stripMargin
         )
       }
 
