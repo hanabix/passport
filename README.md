@@ -24,13 +24,15 @@ cookie {
 dingtalk {
     micro {
         appkey = "微应用的appkey"
-        appsec = "微应用的appsecret"
+        secret = "微应用的appsecret"
     }
     
     mobile {
         appid = "移动接入应用的appid"
-        appsec = "移动接入应用的appSecret"
+        secret = "移动接入应用的appSecret"
     }
+
+    authorization.redirect = "https://your.company.domain/authorized"
 }
 ```
 
@@ -49,9 +51,11 @@ cookie {
 }
 
 wechat {
-  corp = "企业corpid"
-  secret = "企业corpsecret"
-  agent = "应用的agentid"
+    corp = "企业corpid"
+    secret = "企业corpsecret"
+    agent = "应用的agentid"
+
+    authorization.redirect = "https://your.company.domain/authorized"
 }
 ```
 
