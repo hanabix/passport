@@ -27,26 +27,25 @@ import com.typesafe.config.Config
 import fun.zhongl.passport.Echo.cookie
 import spray.json._
 import zhongl.stream.oauth2.FreshToken.Token
-import zhongl.stream.oauth2.dingtalk.JsonSupport
 import zhongl.stream.oauth2.{OAuth2, dingtalk, wechat}
 
 object Platforms {
 
   type Authenticated[UserInfo] = (UserInfo, Uri) => HttpResponse
   type Builder[UserInfo]       = UserInfo => JWTCreator.Builder
-  type Extractor[UserInfo]     = DecodedJWT => UserInfo
+  type Extractor               = DecodedJWT => String
 
-  abstract case class Platform[UserInfo, T <: Token](builder: Builder[UserInfo], extractor: Extractor[UserInfo]) {
+  abstract case class Platform[UserInfo, T <: Token](builder: Builder[UserInfo], extractor: Extractor) {
 
     final def oauth2(f: JWTCreator.Builder => HttpCookie)(implicit system: ActorSystem): OAuth2[T] =
       concrete { case (info, uri) => ok(uri, f, builder(info)) }
 
-    final def userInfoFromCookie(name: String): Directive1[UserInfo] =
-      cookieAs[UserInfo](name, extractor)
+    final def userInfoFromCookie(name: String): Directive1[String] =
+      cookieAs(name, extractor)
 
     protected def concrete(authenticated: Authenticated[UserInfo])(implicit system: ActorSystem): OAuth2[T]
 
-    private def cookieAs[T](name: String, f: DecodedJWT => T): Directive1[T] = cookie(name).map(p => JWT.decode(p.value)).map(f)
+    private def cookieAs(name: String, f: DecodedJWT => String): Directive1[String] = cookie(name).map(p => JWT.decode(p.value)).map(f)
 
     private def ok(uri: Uri, f: JWTCreator.Builder => HttpCookie, builder: JWTCreator.Builder) = {
       @inline
@@ -71,11 +70,11 @@ object Platforms {
   }
 
   val ding: Platform[dingtalk.UserInfo, dingtalk.AccessToken] = {
-    val jsonSupport = new JsonSupport {}
+    val jsonSupport = new dingtalk.JsonSupport {}
 
     import jsonSupport._
 
-    val extractor: Extractor[dingtalk.UserInfo] = { j =>
+    val extractor: Extractor = { j =>
       val name   = j.getClaim("name").asString()
       val email  = j.getClaim("email").asString()
       val dept   = j.getClaim("dept").asArray(classOf[Integer]).toSeq.map(_.intValue())
@@ -83,7 +82,7 @@ object Platforms {
       val active = j.getClaim("active").asBoolean()
       val roles  = j.getClaim("roles").asString().parseJson.convertTo[Seq[dingtalk.Role]]
 
-      dingtalk.UserInfo(j.getSubject, name, email, dept, avatar, active, roles)
+      dingtalk.UserInfo(j.getSubject, name, email, dept, avatar, active, roles).toJson.prettyPrint
     }
 
     val builder: Builder[dingtalk.UserInfo] = { info =>
@@ -105,6 +104,10 @@ object Platforms {
   }
 
   val wework: Platform[wechat.UserInfo, wechat.AccessToken] = {
+    val jsonSupport = new wechat.JsonSupport {}
+
+    import jsonSupport._
+
     val builder: Builder[wechat.UserInfo] = { info =>
       JWT
         .create()
@@ -119,7 +122,7 @@ object Platforms {
         .withArrayClaim("dept", info.department.map(Integer.valueOf).toArray)
     }
 
-    val extractor: Extractor[wechat.UserInfo] = { j =>
+    val extractor: Extractor = { j =>
       val name     = j.getClaim("name").asString()
       val avatar   = j.getClaim("avatar").asString()
       val dept     = j.getClaim("dept").asArray(classOf[Integer]).toSeq.map(_.intValue())
@@ -128,8 +131,7 @@ object Platforms {
       val isleader = j.getClaim("isleader").asInt().intValue()
       val enable   = j.getClaim("enable").asInt().intValue()
       val alias    = j.getClaim("alias").asString()
-      wechat.UserInfo(j.getSubject, name, dept, email, avatar, status, isleader, enable, alias)
-
+      wechat.UserInfo(j.getSubject, name, dept, email, avatar, status, isleader, enable, alias).toJson.prettyPrint
     }
 
     new Platform[wechat.UserInfo, wechat.AccessToken](builder, extractor) {

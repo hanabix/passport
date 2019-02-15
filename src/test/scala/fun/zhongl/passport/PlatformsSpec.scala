@@ -7,6 +7,7 @@ import com.auth0.jwt.JWT
 import com.typesafe.config.ConfigFactory
 import fun.zhongl.passport.Platforms.{Authenticated, Builder, Extractor, Platform}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
+import spray.json._
 import zhongl.stream.oauth2.{OAuth2, dingtalk, wechat}
 
 import scala.concurrent.Await
@@ -15,8 +16,7 @@ import scala.concurrent.duration.Duration
 class PlatformsSpec extends WordSpec with Matchers with BeforeAndAfterAll {
   implicit val system = ActorSystem(getClass.getSimpleName)
 
-  private val jc = JwtCookies.load(ConfigFactory.parseString(
-    """
+  private val jc = JwtCookies.load(ConfigFactory.parseString("""
       |include "common.conf"
       |cookie {
       | domain = ".a.b"
@@ -42,22 +42,26 @@ class PlatformsSpec extends WordSpec with Matchers with BeforeAndAfterAll {
     }
 
     "have ding" in {
+      val jsonSupport = new dingtalk.JsonSupport {}
+      import jsonSupport._
       val info            = dingtalk.UserInfo("1", "n", "e", Seq(1), "a", true, Seq.empty)
       val signature       = Platforms.ding.builder(info).sign(jc.algorithm)
       val maybeDecodedJWT = jc.unapply(HttpRequest(headers = List(Cookie(jc.name, signature))))
-      maybeDecodedJWT.map(Platforms.ding.extractor).foreach(_ shouldBe info)
+      maybeDecodedJWT.map(Platforms.ding.extractor).foreach(_ shouldBe info.toJson.prettyPrint)
     }
 
     "have wework" in {
+      val jsonSupport = new wechat.JsonSupport {}
+      import jsonSupport._
       val info            = wechat.UserInfo("1", "n", Seq(1), "e", "a", 0, 0, 0, "")
       val signature       = Platforms.wework.builder(info).sign(jc.algorithm)
       val maybeDecodedJWT = jc.unapply(HttpRequest(headers = List(Cookie(jc.name, signature))))
-      maybeDecodedJWT.map(Platforms.wework.extractor).foreach(_ shouldBe info)
+      maybeDecodedJWT.map(Platforms.wework.extractor).foreach(_ shouldBe info.toJson.prettyPrint)
     }
 
     "return auto redirect html" in {
-      val builder: Builder[String]     = s => JWT.create().withSubject(s)
-      val extractor: Extractor[String] = j => j.getSubject
+      val builder: Builder[String] = s => JWT.create().withSubject(s)
+      val extractor: Extractor     = j => j.getSubject
       val p = new Platform[String, dingtalk.AccessToken](builder, extractor) {
         override protected def concrete(authenticated: Authenticated[String])(implicit system: ActorSystem) =
           new OAuth2[dingtalk.AccessToken] {
