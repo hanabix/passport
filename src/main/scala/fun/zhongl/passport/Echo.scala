@@ -30,14 +30,18 @@ object Echo extends Directives {
 
     implicit val mat = ActorMaterializer()
 
-    Route.asyncHandler((get & principal) { info =>
+    Route.asyncHandler((principal & extractRequest) { (info, req) =>
       val html = s"""
                   |<html>
                   |  <head>
                   |   <title>Who am i</title>
                   |  </head>
                   |  <body>
-                  |    <h1>${info}</h1>
+                  |    <h2>Current User</h2>
+                  |    <p>$info</p>
+                  |    <br>
+                  |    <h2>${req.method.value} ${req.uri}</h2>
+                  |    ${req.headers.map(h => s"<h3>${h.name()}: ${h.value()}</h3>").mkString("\n")}
                   |  </body>
                   |</html>
                   |""".stripMargin
