@@ -56,9 +56,9 @@ object Main extends Directives {
 
     maybeOpt map {
       case Opt(host, port, true) =>
-        (host, port, Echo.handle(plugin.userInfoFromCookie(jc.name)))
+        (host, port, Echo(plugin.userInfoFromCookie(jc.name)))
       case Opt(host, port, _) =>
-        (host, port, Forward.handle)
+        (host, port, Forward())
     } map {
       case (host, port, handle) => bind(Handlers.prepend(guard, handle), host, port)
     } getOrElse system.terminate()

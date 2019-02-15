@@ -23,13 +23,13 @@ class ForwardSpec extends WordSpec with Matchers with BeforeAndAfterAll {
   "Forward" should {
     "stop recursive forward" in {
       maybeAddress.foreach { addr =>
-        val future = Forward.handle.apply(HttpRequest(headers = List(`X-Forwarded-For`(addr))))
+        val future = Forward.apply.apply(HttpRequest(headers = List(`X-Forwarded-For`(addr))))
         Await.result(future, Duration.Inf) shouldBe HttpResponse(LoopDetected, entity = s"Loop detected: $addr")
       }
     }
 
     "complain missing host" in {
-      Await.result(Forward.handle.apply(HttpRequest()), Duration.Inf) shouldBe HttpResponse(BadRequest, entity = "Missing host header")
+      Await.result(Forward.apply.apply(HttpRequest()), Duration.Inf) shouldBe HttpResponse(BadRequest, entity = "Missing host header")
     }
 
     "add forwarded for" in {
@@ -61,12 +61,12 @@ class ForwardSpec extends WordSpec with Matchers with BeforeAndAfterAll {
     }
 
     "complain missing remote address header" in {
-      val future = Forward.handle.apply(HttpRequest(headers = List(Host(Uri.Host("a.b")))))
+      val future = Forward.apply.apply(HttpRequest(headers = List(Host(Uri.Host("a.b")))))
       Await.result(future, Duration.Inf) shouldBe HttpResponse(InternalServerError, entity = "Missing remote address")
     }
 
     "complain error cause" in {
-      Await.result(Forward.handle.apply(null), Duration.Inf) shouldBe HttpResponse(InternalServerError, entity = "java.lang.NullPointerException")
+      Await.result(Forward.apply.apply(null), Duration.Inf) shouldBe HttpResponse(InternalServerError, entity = "java.lang.NullPointerException")
     }
 
     "exclude Timeout-Access header" in {

@@ -26,7 +26,7 @@ import scala.concurrent.Future
 
 object Echo extends Directives {
 
-  def handle[T](principal: Directive1[T])(implicit sys: ActorSystem): HttpRequest => Future[HttpResponse] = {
+  def apply[T](principal: Directive1[T])(implicit sys: ActorSystem): HttpRequest => Future[HttpResponse] = {
 
     implicit val mat = ActorMaterializer()
 

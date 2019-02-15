@@ -31,7 +31,7 @@ import scala.util.control.NoStackTrace
 
 object Forward {
 
-  def handle(implicit system: ActorSystem): HttpRequest => Future[HttpResponse] = {
+  def apply()(implicit system: ActorSystem): HttpRequest => Future[HttpResponse] = {
 
     @inline
     def local =

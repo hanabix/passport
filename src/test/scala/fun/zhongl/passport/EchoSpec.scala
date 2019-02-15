@@ -27,7 +27,7 @@ class EchoSpec extends WordSpec with Matchers with BeforeAndAfterAll with Direct
                    |  </body>
                    |</html>
                    |""".stripMargin
-      val future = Echo.handle(extractHost).apply(HttpRequest(uri = "http://a.b", headers = List(`User-Agent`("mock"))))
+      val future = Echo(extractHost).apply(HttpRequest(uri = "http://a.b", headers = List(`User-Agent`("mock"))))
       Await.result(future, Duration.Inf) shouldBe HttpResponse(entity = HttpEntity(ContentTypes.`text/html(UTF-8)`, html))
     }
   }
