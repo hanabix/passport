@@ -21,12 +21,13 @@ services:
 
   passport:
     image: zhongl/passport:latest
+    command:
+      - "--docker:local"
     environment:
       JAVA_TOOL_OPTIONS: -Dconfig.file=/app.conf
       DOMAIN: $DOMAIN
-    labels:
-      traefik.port: 8080
-      traefik.frontend.rule: "HostRegexp: {subdomain:[a-z]+}.${DOMAIN}"
+    ports:
+      - 80:8080
 
   web:
     image: zhongl/passport:latest
@@ -36,5 +37,4 @@ services:
       JAVA_TOOL_OPTIONS: -Dconfig.file=/app.conf
       DOMAIN: $DOMAIN
     labels:
-      passport.forward.rule: "Host: www.${DOMAIN}"
-      passport.forward.port: 8080
+      passport.rule: "www.${DOMAIN} > :8080"

@@ -20,11 +20,9 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes.`text/html(UTF-8)`
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{HttpCookie, `Set-Cookie`}
-import akka.http.scaladsl.server.Directive1
 import com.auth0.jwt.interfaces.DecodedJWT
 import com.auth0.jwt.{JWT, JWTCreator}
 import com.typesafe.config.Config
-import fun.zhongl.passport.Echo.cookie
 import spray.json._
 import zhongl.stream.oauth2.FreshToken.Token
 import zhongl.stream.oauth2.{OAuth2, dingtalk, wechat}
@@ -40,12 +38,7 @@ object Platforms {
     final def oauth2(f: JWTCreator.Builder => HttpCookie)(implicit system: ActorSystem): OAuth2[T] =
       concrete { case (info, uri) => ok(uri, f, builder(info)) }
 
-    final def userInfoFromCookie(name: String): Directive1[String] =
-      cookieAs(name, extractor)
-
     protected def concrete(authenticated: Authenticated[UserInfo])(implicit system: ActorSystem): OAuth2[T]
-
-    private def cookieAs(name: String, f: DecodedJWT => String): Directive1[String] = cookie(name).map(p => JWT.decode(p.value)).map(f)
 
     private def ok(uri: Uri, f: JWTCreator.Builder => HttpCookie, builder: JWTCreator.Builder) = {
       @inline

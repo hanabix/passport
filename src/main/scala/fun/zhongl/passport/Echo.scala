@@ -16,37 +16,29 @@
 
 package fun.zhongl.passport
 
+import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.ContentTypes.`text/html(UTF-8)`
-import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse}
-import akka.http.scaladsl.server.{Directive1, Directives, Route}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse}
+import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.Flow
+import spray.json._
 
-import scala.concurrent.Future
+import scala.collection.immutable
 
-object Echo extends Directives {
+object Echo extends Directives with DefaultJsonProtocol {
 
-  def apply[T](principal: Directive1[T])(implicit sys: ActorSystem): HttpRequest => Future[HttpResponse] = {
+  type Shape = Flow[HttpRequest, HttpResponse, NotUsed]
 
+  def apply()(implicit sys: ActorSystem): Shape = {
     implicit val mat = ActorMaterializer()
+    implicit val f   = jsonFormat4(InspectedRequest)
 
-    Route.asyncHandler((principal & extractRequest) { (info, req) =>
-      val html = s"""
-                  |<html>
-                  |  <head>
-                  |   <title>Who am i</title>
-                  |  </head>
-                  |  <body>
-                  |    <h2>Current User</h2>
-                  |    <p>$info</p>
-                  |    <br>
-                  |    <h2>${req.method.value} ${req.uri}</h2>
-                  |    ${req.headers.map(h => s"<h3>${h.name()}: ${h.value()}</h3>").mkString("\n")}
-                  |  </body>
-                  |</html>
-                  |""".stripMargin
-      complete(HttpEntity(`text/html(UTF-8)`, html))
+    Route.handlerFlow((extractRequest & entity(as[String])) { (req, body) =>
+      val ir = InspectedRequest(req.method.value, req.uri.toString(), req.headers.map(_.toString()), body)
+      complete(HttpEntity(ContentTypes.`application/json`, ir.toJson.compactPrint))
     })
   }
 
+  final case class InspectedRequest(method: String, uri: String, headers: immutable.Seq[String], body: String)
 }

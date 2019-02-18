@@ -1,0 +1,67 @@
+/*
+ *  Copyright 2019 Zhong Lunfu
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+
+package fun.zhongl.passport
+import akka.NotUsed
+import akka.actor.ActorSystem
+import akka.http.scaladsl.model.headers.Host
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
+import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Source}
+import akka.stream.{ActorMaterializer, FlowShape}
+import fun.zhongl.passport.Rewrite.{Forwarded, IgnoreTimeoutAccess}
+import zhongl.stream.oauth2.Guard
+
+import scala.concurrent.Future
+import scala.util.Try
+import scala.util.control.NonFatal
+
+object Handle {
+
+  def apply(mayBeDynamic: Option[Source[Host => Host, NotUsed]])(implicit system: ActorSystem): Flow[HttpRequest, HttpResponse, NotUsed] = {
+    implicit val ex  = system.dispatcher
+    implicit val mat = ActorMaterializer()
+
+    val config = system.settings.config
+    val jc     = JwtCookies.load(config)
+    val ignore = jc.unapply(_: HttpRequest).isDefined
+    val plugin = Platforms.bound(config)
+    val local = Try { config.getString("interface") }.toOption
+      .orElse(NetworkInterfaces.findFirstNetworkInterfaceHasInet4Address.map(_.getName))
+      .flatMap(NetworkInterfaces.localAddress)
+      .getOrElse(throw new IllegalStateException("Unavailable local address"))
+
+    val graph = GraphDSL.create() { implicit b =>
+      import GraphDSL.Implicits._
+
+      val guard   = b.add(Guard.graph(plugin.oauth2(jc.generate), ignore))
+      val merge   = b.add(Merge[Future[HttpResponse]](2))
+      val rewrite = b.add(Rewrite(mayBeDynamic, IgnoreTimeoutAccess, Forwarded(local)))
+      val forward = b.add(Forward())
+
+      // format: OFF
+      guard.out0 ~> rewrite ~> forward ~> merge
+      guard.out1                       ~> merge
+      // format: ON
+
+      FlowShape(guard.in, merge.out)
+    }
+
+    Flow[HttpRequest].via(graph).mapAsync(1)(identity).recover {
+      case c: Complainant  => c.response
+      case NonFatal(cause) => HttpResponse(StatusCodes.InternalServerError, entity = cause.toString)
+    }
+  }
+}

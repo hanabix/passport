@@ -15,18 +15,10 @@
  */
 
 package fun.zhongl.passport
-import akka.NotUsed
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.StatusCodes.{Success => _}
-import akka.http.scaladsl.model._
-import akka.stream.scaladsl.Flow
+import akka.http.scaladsl.model.HttpResponse
 
-import scala.concurrent.Future
+import scala.util.control.NoStackTrace
 
-object Forward {
-
-  type Shape = Flow[HttpRequest, Future[HttpResponse], NotUsed]
-
-  def apply()(implicit system: ActorSystem): Shape = Flow[HttpRequest].map(Http().singleRequest(_))
+trait Complainant extends NoStackTrace {
+  def response: HttpResponse
 }
