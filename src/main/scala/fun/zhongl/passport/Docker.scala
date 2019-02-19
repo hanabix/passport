@@ -22,7 +22,7 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.HttpEntity.Chunked
-import akka.http.scaladsl.model.Uri.{Authority, Path}
+import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
@@ -76,10 +76,10 @@ object Docker {
 
   def apply(host: String = fromEnv)(implicit system: ActorSystem): Docker = {
     Uri(host) match {
-      case u @ Uri("unix", _, Path(p), _, _) =>
+      case Uri("unix", _, Path(p), _, _) =>
         val transport = new UnixSocketTransport(new File(p))
         val settings  = ConnectionPoolSettings(system).withTransport(transport)
-        new Docker(u.copy(scheme = "http", authority = Authority(Uri.Host("localhost"))), settings)
+        new Docker(Uri("http://localhost"), settings)
       case u =>
         new Docker(u.copy(scheme = "http"), ConnectionPoolSettings(system))
     }
