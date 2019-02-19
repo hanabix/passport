@@ -1,7 +1,6 @@
 package fun.zhongl.passport
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.model.ContentTypes
 import akka.http.scaladsl.model.HttpEntity.{Chunk, Chunked}
 import akka.http.scaladsl.model.headers.Host
@@ -21,7 +20,7 @@ class DynamicSpec extends WordSpec with Matchers with BeforeAndAfterAll with Dir
 
   private val docker = Docker("tcp://localhost:12306")
 
-  var bound: ServerBinding = _
+  private val bound = Await.result(Http().bindAndHandle(mockDockerDaemon, "localhost", 12306), 1.second)
 
   "Dynamic" should {
     "by docker local" in {
@@ -47,11 +46,6 @@ class DynamicSpec extends WordSpec with Matchers with BeforeAndAfterAll with Dir
         complete(List(Docker.Service("id", Docker.Spec("demo", Map("passport.rule" -> ".+")))))
       }
     )
-  }
-
-  override protected def beforeAll(): Unit = {
-    val f = Http().bindAndHandle(mockDockerDaemon, "localhost", 12306)
-    bound = Await.result(f, 1.second)
   }
 
   override protected def afterAll(): Unit = {
