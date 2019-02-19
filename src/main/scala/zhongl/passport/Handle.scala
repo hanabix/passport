@@ -20,6 +20,7 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.Host
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
+import akka.http.scaladsl.util.FastFuture
 import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Source}
 import akka.stream.{ActorMaterializer, FlowShape}
 import zhongl.passport.Rewrite._
@@ -31,7 +32,7 @@ import scala.util.control.NonFatal
 
 object Handle {
 
-  def apply(mayBeDynamic: Option[Source[Host => Host, NotUsed]])(implicit system: ActorSystem): Flow[HttpRequest, HttpResponse, NotUsed] = {
+  def apply(mayBeDynamic: Option[Source[Host => Option[Host], NotUsed]])(implicit system: ActorSystem): Flow[HttpRequest, HttpResponse, NotUsed] = {
     implicit val ex  = system.dispatcher
     implicit val mat = ActorMaterializer()
 
@@ -48,20 +49,23 @@ object Handle {
       import GraphDSL.Implicits._
 
       val guard   = b.add(Guard.graph(plugin.oauth2(jc.generate), ignore))
-      val merge   = b.add(Merge[Future[HttpResponse]](2))
+      val merge   = b.add(Merge[Future[HttpResponse]](3))
       val rewrite = b.add(Rewrite(mayBeDynamic, IgnoreTimeoutAccess, Forwarded(local)))
+      val fork    = b.add(EitherFork[HttpResponse, HttpRequest]())
+      val future  = b.add(Flow[HttpResponse].map(FastFuture.successful))
       val forward = b.add(Forward())
 
       // format: OFF
-      guard.out0 ~> rewrite ~> forward ~> merge
-      guard.out1                       ~> merge
+      guard.out0 ~> rewrite ~> fork.in
+                               fork.out0 ~> future  ~> merge
+                               fork.out1 ~> forward ~> merge
+      guard.out1                                    ~> merge
       // format: ON
 
       FlowShape(guard.in, merge.out)
     }
 
     Flow[HttpRequest].via(graph).mapAsync(1)(identity).recover {
-      case c: Complainant  => c.response
       case NonFatal(cause) => HttpResponse(StatusCodes.InternalServerError, entity = cause.toString)
     }
   }

@@ -1,23 +1,23 @@
 version: '3.3'
 services:
 
-  gateway:
-    image: traefik:latest
-    command:
-      - "--api"
-      - "--entrypoints=Name:http Address::80 Redirect.EntryPoint:https"
-      - "--entrypoints=Name:https Address::443 TLS"
-      - "--defaultentrypoints=http,https"
-      - "--docker"
-      - "--docker.watch"
-      - "--docker.domain=${DOMAIN}"
-      - "--accesslog"
-      - "--traefikLog"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - 80:80
-      - 443:443
+#  gateway:
+#    image: traefik:latest
+#    command:
+#      - "--api"
+#      - "--entrypoints=Name:http Address::80 Redirect.EntryPoint:https"
+#      - "--entrypoints=Name:https Address::443 TLS"
+#      - "--defaultentrypoints=http,https"
+#      - "--docker"
+#      - "--docker.watch"
+#      - "--docker.domain=${DOMAIN}"
+#      - "--accesslog"
+#      - "--traefikLog"
+#    volumes:
+#      - /var/run/docker.sock:/var/run/docker.sock
+#    ports:
+#      - 80:80
+#      - 443:443
 
   passport:
     image: zhongl/passport:latest
@@ -25,21 +25,23 @@ services:
       - "-d:docker"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    labels:
-      traefik.port: 8080
-      traefik.frontend.rule: "HostRegexp: {subdomain:[a-z]+}.${DOMAIN}"
+#    labels:
+#      traefik.port: 8080
+#      traefik.frontend.rule: "HostRegexp: {subdomain:[a-z]+}.${DOMAIN}"
     environment:
       JAVA_TOOL_OPTIONS: -Dconfig.file=/run/secrets/conf
       DOMAIN: $DOMAIN
     secrets:
       - conf
+    ports:
+      - 80:8080
 
   echo:
     image: zhongl/passport:latest
     command:
       - "-e"
     labels:
-      passport.rule: "www.${DOMAIN} > :8080"
+      passport.rule: "www.${DOMAIN}|>|:8080"
 
 secrets:
   conf:

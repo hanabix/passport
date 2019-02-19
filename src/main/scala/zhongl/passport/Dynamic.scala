@@ -19,10 +19,10 @@ package zhongl.passport
 import java.util.regex.Pattern
 
 import akka.NotUsed
+import akka.event.Logging
 import akka.http.scaladsl.model.headers.Host
-import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
-import akka.stream.Materializer
 import akka.stream.scaladsl.{Flow, Source}
+import akka.stream.{Attributes, Materializer}
 import akka.util.ByteString
 
 object Dynamic {
@@ -30,7 +30,7 @@ object Dynamic {
 
   val filterByLabel = Map("label" -> List(label))
 
-  def by(docker: Docker)(implicit mat: Materializer): String => Source[Host => Host, NotUsed] = {
+  def by(docker: Docker)(implicit mat: Materializer): String => Source[Host => Option[Host], NotUsed] = {
     case "docker" =>
       arrange(
         docker.events(Map("scope" -> List("local"), "type" -> List("container"), "event" -> List("start", "destroy"))),
@@ -49,11 +49,12 @@ object Dynamic {
       .single(ByteString.empty)
       .orElse(events)
       .via(flow)
+      .log("Dynamic").withAttributes(Attributes.logLevels(Logging.InfoLevel))
       .via(CachedLatest())
       .map(redirect)
   }
 
-  private def redirect(rules: List[(String, String)]): Host => Host = {
+  private def redirect(rules: List[(String, String)]): Host => Option[Host] = {
     val rs = rules.map { p =>
       p._1.split("\\s*\\|>\\|\\s*:", 2) match {
         case Array(r, port) => (Pattern.compile(r), Host(p._2, port.toInt))
@@ -64,11 +65,7 @@ object Dynamic {
     host =>
       rs.find(p => p._1.matcher(host.host.address()).matches())
         .map(p => p._2)
-        .getOrElse(throw NoMatchedHostRuleException(host))
   }
 
-  final case class NoMatchedHostRuleException(host: Host) extends Complainant {
-    override def response: HttpResponse = HttpResponse(StatusCodes.BadGateway, entity = "No matched host rule")
-  }
 
 }

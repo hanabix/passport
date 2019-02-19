@@ -20,6 +20,7 @@ import java.io.File
 
 import akka.NotUsed
 import akka.actor.ActorSystem
+import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.HttpEntity.Chunked
@@ -27,9 +28,9 @@ import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Host
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
-import akka.stream.Materializer
 import akka.stream.alpakka.unixdomainsocket.scaladsl.UnixDomainSocket
 import akka.stream.scaladsl._
+import akka.stream.{Attributes, Materializer}
 import akka.util.ByteString
 import spray.json._
 import zhongl.passport.Docker.{Container, Service}
@@ -41,15 +42,18 @@ final class Docker(base: Uri, outgoing: () => Flow[HttpRequest, HttpResponse, _]
     val request = HttpRequest(uri = base.copy(path = Path / "events").withQuery(query))
     Source
       .single(request)
+      .log("Docker Events").withAttributes(Attributes.logLevels(Logging.InfoLevel))
       .via(outgoing())
+      .log("Docker Events").withAttributes(Attributes.logLevels(Logging.InfoLevel))
       .flatMapConcat {
         case HttpResponse(StatusCodes.OK, _, Chunked(ContentTypes.`application/json`, chunks), _) => chunks
       }
+      .log("Docker Events")
       .map(_.data())
   }
 
   def containers[T](filters: Map[String, List[String]])(implicit mat: Materializer): Flow[T, List[Container], NotUsed] = {
-    list[T, List[Container]](filters, Path / "containers")
+    list[T, List[Container]](filters, Path / "containers" / "json")
   }
 
   def services[T](filters: Map[String, List[String]])(implicit mat: Materializer): Flow[T, List[Service], NotUsed] = {
@@ -59,9 +63,15 @@ final class Docker(base: Uri, outgoing: () => Flow[HttpRequest, HttpResponse, _]
   private def list[A, B](filters: Map[String, List[String]], path: Path)(implicit u: Unmarshaller[ResponseEntity, B], mat: Materializer) = {
     val query   = Uri.Query("filters" -> filters.toJson.compactPrint)
     val request = HttpRequest(uri = base.copy(path = path).withQuery(query))
-    Flow[A].map(_ => request).via(outgoing()).mapAsync(1) {
-      case HttpResponse(StatusCodes.OK, _, entity, _) => Unmarshal(entity).to[B]
-    }
+    Flow[A]
+      .map(_ => request)
+      .log(s"Docker $path").withAttributes(Attributes.logLevels(Logging.InfoLevel))
+      .via(outgoing())
+      .log(s"Docker $path").withAttributes(Attributes.logLevels(Logging.InfoLevel))
+      .mapAsync(1) {
+        case HttpResponse(StatusCodes.OK, _, entity, _) => Unmarshal(entity).to[B]
+      }
+      .log(s"Docker $path")
   }
 }
 
@@ -86,7 +96,7 @@ object Docker {
     sys.env.getOrElse("DOCKER_HOST", "unix:///var/run/docker.dock")
   }
 
-  final case class Container(`ID`: String, `Names`: List[String], `Labels`: Map[String, String])
+  final case class Container(`Id`: String, `Names`: List[String], `Labels`: Map[String, String])
   final case class Service(`ID`: String, `Spec`: Spec)
   final case class Spec(`Name`: String, `Labels`: Map[String, String])
 

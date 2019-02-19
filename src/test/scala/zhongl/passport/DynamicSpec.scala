@@ -50,12 +50,12 @@ class DynamicSpec extends WordSpec with Matchers with BeforeAndAfterAll with Dir
   "Dynamic" should {
     "by docker local" in {
       val f = Dynamic.by(docker).apply("docker").runWith(Sink.head)
-      Await.result(f, Duration.Inf)(Host("foo.bar")) shouldBe Host("demo", 8080)
+      Await.result(f, Duration.Inf)(Host("foo.bar")) shouldBe Some(Host("demo", 8080))
     }
 
     "by docker swarm" in {
       val f = Dynamic.by(docker).apply("swarm").runWith(Sink.head)
-      Await.result(f, Duration.Inf)(Host("foo.bar")) shouldBe Host("demo", 0)
+      Await.result(f, Duration.Inf)(Host("foo.bar")) shouldBe Some(Host("demo", 0))
     }
 
   }
@@ -65,7 +65,7 @@ class DynamicSpec extends WordSpec with Matchers with BeforeAndAfterAll with Dir
       (path("events") & parameter("filters")) { _ =>
         complete(Chunked(ContentTypes.`application/json`, Source.repeat(Chunk(ByteString(" ")))))
       },
-      (path("containers") & parameter("filters")) { _ =>
+      (path("containers" / "json") & parameter("filters")) { _ =>
         complete(List(Docker.Container("id", List("/demo"), Map("passport.rule" -> ".+|>|:8080"))))
       },
       (path("services") & parameter("filters")) { _ =>
