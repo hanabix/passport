@@ -22,7 +22,7 @@ import akka.http.scaladsl.model.headers.Host
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Source}
 import akka.stream.{ActorMaterializer, FlowShape}
-import zhongl.passport.Rewrite.IgnoreTimeoutAccess
+import zhongl.passport.Rewrite._
 import zhongl.stream.oauth2.Guard
 
 import scala.concurrent.Future
