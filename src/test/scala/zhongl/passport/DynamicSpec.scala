@@ -53,10 +53,10 @@ class DynamicSpec extends WordSpec with Matchers with BeforeAndAfterAll with Dir
       Await.result(f, Duration.Inf)(Host("foo.bar")) shouldBe Host("demo", 8080)
     }
 
-//    "by docker swarm" in {
-//      val f = Dynamic.by(docker).apply("swarm").runWith(Sink.head)
-//      Await.result(f, Duration.Inf)(Host("foo.bar")) shouldBe Host("demo", 0)
-//    }
+    "by docker swarm" in {
+      val f = Dynamic.by(docker).apply("swarm").runWith(Sink.head)
+      Await.result(f, Duration.Inf)(Host("foo.bar")) shouldBe Host("demo", 0)
+    }
 
   }
 

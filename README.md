@@ -6,6 +6,7 @@
 
 Passport 是一个超轻量级统一认证网关, 面向使用 [钉钉](https://www.dingtalk.com) 或是 [企业微信](https://work.weixin.qq.com/) 的创业团队提供手机扫码登录访问内部服务.
 
+
 # 部署
 
 ## 配置 app.conf
