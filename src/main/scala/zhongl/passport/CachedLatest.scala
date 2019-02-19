@@ -19,23 +19,28 @@ package zhongl.passport
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 
-final class CachedLatest[T](latest: T) extends GraphStage[FlowShape[T, T]] {
+final class CachedLatest[T] extends GraphStage[FlowShape[T, T]] {
   val in  = Inlet[T]("CachedLatest.in")
   val out = Outlet[T]("CachedLatest.out")
 
   override val shape = FlowShape.of(in, out)
 
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
-    private var currentValue: T = latest
+    private var currentValue: T = _
+    private var waitingFirstValue = true
 
     setHandlers(in, out, new InHandler with OutHandler {
       override def onPush(): Unit = {
         currentValue = grab(in)
+        if (waitingFirstValue) {
+          waitingFirstValue = false
+          if (isAvailable(out)) push(out, currentValue)
+        }
         pull(in)
       }
 
       override def onPull(): Unit = {
-        push(out, currentValue)
+        if (!waitingFirstValue) push(out, currentValue)
       }
     })
 
@@ -45,5 +50,5 @@ final class CachedLatest[T](latest: T) extends GraphStage[FlowShape[T, T]] {
   }
 }
 object CachedLatest {
-  def apply[T](latest: T): CachedLatest[T] = new CachedLatest(latest)
+  def apply[T](): CachedLatest[T] = new CachedLatest()
 }

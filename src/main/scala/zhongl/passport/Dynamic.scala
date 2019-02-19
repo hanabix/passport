@@ -21,6 +21,7 @@ import java.util.regex.Pattern
 import akka.NotUsed
 import akka.http.scaladsl.model.headers.Host
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
+import akka.stream.Materializer
 import akka.stream.scaladsl.{Flow, Source}
 import akka.util.ByteString
 
@@ -29,7 +30,7 @@ object Dynamic {
 
   val filterByLabel = Map("label" -> List(label))
 
-  def by(docker: Docker): String => Source[Host => Host, NotUsed] = {
+  def by(docker: Docker)(implicit mat: Materializer): String => Source[Host => Host, NotUsed] = {
     case "docker" =>
       arrange(
         docker.events(Map("scope" -> List("local"), "type" -> List("container"), "event" -> List("start", "destroy"))),
@@ -45,12 +46,10 @@ object Dynamic {
 
   private def arrange(events: Source[ByteString, NotUsed], flow: Flow[Any, List[(String, String)], NotUsed]) = {
     Source
-      .single(Unit)
+      .single(ByteString.empty)
+      .orElse(events)
       .via(flow)
-      .map(CachedLatest(_))
-      .flatMapConcat { cl =>
-        events.via(flow).via(cl)
-      }
+      .via(CachedLatest())
       .map(redirect)
   }
 

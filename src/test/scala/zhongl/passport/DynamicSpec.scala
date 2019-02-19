@@ -16,14 +16,17 @@
 
 package zhongl.passport
 
+import java.io.File
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.ContentTypes
 import akka.http.scaladsl.model.HttpEntity.{Chunk, Chunked}
 import akka.http.scaladsl.model.headers.Host
+import akka.http.scaladsl.model.{ContentTypes, Uri}
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.alpakka.unixdomainsocket.scaladsl.UnixDomainSocket
+import akka.stream.scaladsl.{Sink, Source, TLSPlacebo}
 import akka.util.ByteString
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
 
@@ -35,20 +38,26 @@ class DynamicSpec extends WordSpec with Matchers with BeforeAndAfterAll with Dir
   private implicit val system = ActorSystem(getClass.getSimpleName)
   private implicit val mat    = ActorMaterializer()
 
-  private val docker = Docker("tcp://localhost:12306")
+  private val file = new File("target", "passport.sock")
 
-  private val bound = Await.result(Http().bindAndHandle(mockDockerDaemon, "localhost", 12306), 1.second)
+  private val bound = {
+    val flow = mockDockerDaemon.join(Http().serverLayer()).join(TLSPlacebo())
+    Await.result(UnixDomainSocket().bindAndHandle(flow, file), Duration.Inf)
+  }
+
+  private val docker = Docker(Uri(file.toURI.toString).withScheme("unix").toString())
 
   "Dynamic" should {
     "by docker local" in {
-      val f = Dynamic.by(docker)("docker").runWith(Sink.head)
+      val f = Dynamic.by(docker).apply("docker").runWith(Sink.head)
       Await.result(f, Duration.Inf)(Host("foo.bar")) shouldBe Host("demo", 8080)
     }
 
-    "by docker swarm" in {
-      val f = Dynamic.by(docker)("swarm").runWith(Sink.head)
-      Await.result(f, Duration.Inf)(Host("foo.bar")) shouldBe Host("demo", 0)
-    }
+//    "by docker swarm" in {
+//      val f = Dynamic.by(docker).apply("swarm").runWith(Sink.head)
+//      Await.result(f, Duration.Inf)(Host("foo.bar")) shouldBe Host("demo", 0)
+//    }
+
   }
 
   def mockDockerDaemon: Route = get {
@@ -61,12 +70,15 @@ class DynamicSpec extends WordSpec with Matchers with BeforeAndAfterAll with Dir
       },
       (path("services") & parameter("filters")) { _ =>
         complete(List(Docker.Service("id", Docker.Spec("demo", Map("passport.rule" -> ".+")))))
+      },
+      pathEndOrSingleSlash {
+        complete("ok")
       }
     )
   }
 
   override protected def afterAll(): Unit = {
-    bound.terminate(1.second)
+    bound.unbind()
     system.terminate()
   }
 }

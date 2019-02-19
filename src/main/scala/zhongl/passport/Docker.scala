@@ -17,54 +17,49 @@
 package zhongl.passport
 
 import java.io.File
-import java.net.InetSocketAddress
 
 import akka.NotUsed
 import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.HttpEntity.Chunked
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
+import akka.http.scaladsl.model.headers.Host
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
-import akka.http.scaladsl.{ClientTransport, Http}
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 import akka.stream.alpakka.unixdomainsocket.scaladsl.UnixDomainSocket
 import akka.stream.scaladsl._
 import akka.util.ByteString
 import spray.json._
 import zhongl.passport.Docker.{Container, Service}
 
-import scala.concurrent.Future
-
-class Docker(base: Uri, settings: ConnectionPoolSettings)(implicit system: ActorSystem) extends Docker.JsonSupport {
-
-  private implicit val mat = ActorMaterializer()
+final class Docker(base: Uri, outgoing: () => Flow[HttpRequest, HttpResponse, _]) extends Docker.JsonSupport {
 
   def events(filters: Map[String, List[String]]): Source[ByteString, NotUsed] = {
     val query   = Uri.Query("filters" -> filters.toJson.compactPrint)
     val request = HttpRequest(uri = base.copy(path = Path / "events").withQuery(query))
-    val future  = Http().singleRequest(request, settings = settings)
     Source
-      .fromFuture(future)
+      .single(request)
+      .via(outgoing())
       .flatMapConcat {
         case HttpResponse(StatusCodes.OK, _, Chunked(ContentTypes.`application/json`, chunks), _) => chunks
       }
       .map(_.data())
   }
 
-  def containers[T](filters: Map[String, List[String]]): Flow[T, List[Container], NotUsed] = {
+  def containers[T](filters: Map[String, List[String]])(implicit mat: Materializer): Flow[T, List[Container], NotUsed] = {
     list[T, List[Container]](filters, Path / "containers")
   }
 
-  def services[T](filters: Map[String, List[String]]): Flow[T, List[Service], NotUsed] = {
+  def services[T](filters: Map[String, List[String]])(implicit mat: Materializer): Flow[T, List[Service], NotUsed] = {
     list[T, List[Service]](filters, Path / "services")
   }
 
-  private def list[A, B](filters: Map[String, List[String]], path: Path)(implicit u: Unmarshaller[ResponseEntity, B]) = {
+  private def list[A, B](filters: Map[String, List[String]], path: Path)(implicit u: Unmarshaller[ResponseEntity, B], mat: Materializer) = {
     val query   = Uri.Query("filters" -> filters.toJson.compactPrint)
     val request = HttpRequest(uri = base.copy(path = path).withQuery(query))
-    Flow[A].mapAsync(1)(_ => Http().singleRequest(request, settings = settings)).mapAsync(1) {
+    Flow[A].map(_ => request).via(outgoing()).mapAsync(1) {
       case HttpResponse(StatusCodes.OK, _, entity, _) => Unmarshal(entity).to[B]
     }
   }
@@ -78,11 +73,12 @@ object Docker {
   def apply(host: String = fromEnv)(implicit system: ActorSystem): Docker = {
     Uri(host) match {
       case Uri("unix", _, Path(p), _, _) =>
-        val transport = new UnixSocketTransport(new File(p))
-        val settings  = ConnectionPoolSettings(system).withTransport(transport)
-        new Docker(Uri("http://localhost"), settings)
+        val file = new File(p)
+        val http = Http().clientLayer(Host("localhost")).atop(TLSPlacebo())
+        val uds  = UnixDomainSocket()
+        new Docker(Uri("http://localhost"), () => http.join(uds.outgoingConnection(file)))
       case u =>
-        new Docker(u.copy(scheme = "http"), ConnectionPoolSettings(system))
+        throw new IllegalStateException(s"Unsupported $host, it must be started with unix://")
     }
   }
 
@@ -93,20 +89,6 @@ object Docker {
   final case class Container(`ID`: String, `Names`: List[String], `Labels`: Map[String, String])
   final case class Service(`ID`: String, `Spec`: Spec)
   final case class Spec(`Name`: String, `Labels`: Map[String, String])
-
-  private final class UnixSocketTransport(file: File) extends ClientTransport {
-    override def connectTo(host: String, port: Int, settings: ClientConnectionSettings)(
-        implicit system: ActorSystem): Flow[ByteString, ByteString, Future[Http.OutgoingConnection]] = {
-      implicit val ex = system.dispatcher
-
-      UnixDomainSocket()
-        .outgoingConnection(file)
-        .mapMaterializedValue(_.map { _ =>
-          val address = InetSocketAddress.createUnresolved(host, port)
-          Http.OutgoingConnection(address, address)
-        })
-    }
-  }
 
   trait JsonSupport extends DefaultJsonProtocol with SprayJsonSupport {
     implicit val specF: JsonFormat[Spec]           = jsonFormat2(Spec)
