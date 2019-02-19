@@ -1,3 +1,4 @@
+
 lazy val akkaHttpVersion = "10.1.6"
 lazy val akkaVersion     = "2.5.19"
 lazy val oauth2Version   = "0.1.8"
@@ -14,9 +15,12 @@ lazy val root = (project in file("."))
     scalacOptions += "-deprecation",
     resolvers += "jitpack" at "https://jitpack.io",
     mainClass in Compile := Some("zhongl.passport.Main"),
+    maintainer in Docker := "zhong.lunfu@gmail.com",
     dockerBaseImage := "openjdk:8-alpine",
     dockerEnvVars := Map("DOCKER_HOST" -> "unix:///var/run/docker.sock"),
     dockerExposedPorts := Seq(8080),
+    daemonUserUid in Docker := None,
+    daemonUser in Docker := "root",
     dockerRepository := sys.props.get("docker.repository"),
     version in Docker := sys.props.get("docker.tag").getOrElse(version.value),
     libraryDependencies ++= Seq(
