@@ -16,7 +16,7 @@ import scala.concurrent.duration.Duration
 class PlatformsSpec extends WordSpec with Matchers with BeforeAndAfterAll {
   implicit val system = ActorSystem(getClass.getSimpleName)
 
-  private val jc = JwtCookies.load(ConfigFactory.parseString("""
+  private val jc = JwtCookie.apply(ConfigFactory.parseString("""
       |include "common.conf"
       |cookie {
       | domain = ".a.b"

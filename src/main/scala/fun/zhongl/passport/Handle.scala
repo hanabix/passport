@@ -35,7 +35,7 @@ object Handle {
     implicit val mat = ActorMaterializer()
 
     val config = system.settings.config
-    val jc     = JwtCookies.load(config)
+    val jc     = JwtCookie.apply(config)
     val ignore = jc.unapply(_: HttpRequest).isDefined
     val plugin = Platforms.bound(config)
     val local = Try { config.getString("interface") }.toOption

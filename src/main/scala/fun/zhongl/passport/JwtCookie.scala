@@ -23,11 +23,11 @@ import zhongl.stream.oauth2.JwtCookie
 
 import scala.concurrent.duration.FiniteDuration
 
-object JwtCookies {
-  def load(conf: Config): JwtCookie = {
+object JwtCookie {
+  def apply(conf: Config): JwtCookie = {
     val unit      = TimeUnit.DAYS
     val days      = conf.getDuration("cookie.expires_in", unit)
     val algorithm = Algorithm.HMAC256(conf.getString("cookie.secret"))
-    JwtCookie(conf.getString("cookie.name"), conf.getString("cookie.domain"), algorithm, FiniteDuration(days, unit))
+    zhongl.stream.oauth2.JwtCookie(conf.getString("cookie.name"), conf.getString("cookie.domain"), algorithm, FiniteDuration(days, unit))
   }
 }
