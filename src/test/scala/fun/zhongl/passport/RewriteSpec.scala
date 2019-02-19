@@ -6,17 +6,33 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.TimeoutAccess
 import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.{HttpRequest, RemoteAddress}
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Sink, Source}
 import fun.zhongl.passport.NetworkInterfaces._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
 
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+
 class RewriteSpec extends WordSpec with Matchers with BeforeAndAfterAll with MockFactory {
 
   private implicit val system = ActorSystem(getClass.getSimpleName)
+  private implicit val mat = ActorMaterializer()
 
   private val local = RemoteAddress(InetAddress.getLoopbackAddress)
 
   "Rewrite" should {
+    "do normal" in {
+      val f = Source
+        .single(HttpRequest(headers = List(Host("localhost"), `Remote-Address`(local))))
+        .via(Rewrite(Option(Source.single(identity)), Rewrite.Forwarded(local), Rewrite.IgnoreTimeoutAccess))
+        .runWith(Sink.head)
+      Await.result(f, Duration.Inf) shouldBe HttpRequest(
+        uri = "//localhost/", headers = List(`X-Forwarded-For`(local, local),Host("localhost"))
+      )
+    }
+
     "complain missing host" in {
       intercept[Rewrite.MissingHostException.type] {
         Rewrite.HostOfUri().apply(HttpRequest())

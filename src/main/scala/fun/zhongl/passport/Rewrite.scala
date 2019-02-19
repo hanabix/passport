@@ -46,8 +46,6 @@ object Rewrite {
     })
   }
 
-  private def apply(action: Action): Shape = Flow[HttpRequest].map(doRewrite(_, action))
-
   private def doRewrite(req: HttpRequest, action: Action) = {
     val (hs, rewrite) = req.headers.foldLeft((List.empty[HttpHeader], action)) {
       case ((acc, r), h) =>
