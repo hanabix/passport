@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package fun.zhongl.passport
+package zhongl.passport
 
 import akka.NotUsed
 import akka.actor.{ActorSystem, Terminated}
@@ -24,7 +24,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Flow
-import fun.zhongl.passport.CommandLine._
+import zhongl.passport.CommandLine._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}

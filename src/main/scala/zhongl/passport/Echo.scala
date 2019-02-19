@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package fun.zhongl.passport
+package zhongl.passport
 
 import akka.NotUsed
 import akka.actor.ActorSystem

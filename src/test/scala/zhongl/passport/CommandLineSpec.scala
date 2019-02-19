@@ -14,11 +14,16 @@
  *    limitations under the License.
  */
 
-package fun.zhongl.passport
-import akka.http.scaladsl.model.HttpResponse
+package zhongl.passport
 
-import scala.util.control.NoStackTrace
+import org.scalatest.{Matchers, WordSpec}
 
-trait Complainant extends NoStackTrace {
-  def response: HttpResponse
+class CommandLineSpec extends WordSpec with Matchers {
+  val default = CommandLine.Opt()
+
+  "CommandLine" should {
+    "parse opt" in {
+      CommandLine.parser.parse(Seq(), default) shouldBe Some(default)
+    }
+  }
 }

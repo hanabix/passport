@@ -14,7 +14,8 @@
  *    limitations under the License.
  */
 
-package fun.zhongl.passport
+package zhongl.passport
+
 import java.net.{Inet4Address, InetAddress, NetworkInterface}
 
 import akka.http.scaladsl.model.RemoteAddress

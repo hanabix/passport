@@ -14,19 +14,21 @@
  *    limitations under the License.
  */
 
-package fun.zhongl.passport
-import akka.NotUsed
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.StatusCodes.{Success => _}
-import akka.http.scaladsl.model._
-import akka.stream.scaladsl.Flow
+package zhongl.passport
 
-import scala.concurrent.Future
+import java.util.concurrent.TimeUnit
 
-object Forward {
+import com.auth0.jwt.algorithms.Algorithm
+import com.typesafe.config.Config
+import zhongl.stream.oauth2.JwtCookie
 
-  type Shape = Flow[HttpRequest, Future[HttpResponse], NotUsed]
+import scala.concurrent.duration.FiniteDuration
 
-  def apply()(implicit system: ActorSystem): Shape = Flow[HttpRequest].map(Http().singleRequest(_))
+object JwtCookie {
+  def apply(conf: Config): JwtCookie = {
+    val unit      = TimeUnit.DAYS
+    val days      = conf.getDuration("cookie.expires_in", unit)
+    val algorithm = Algorithm.HMAC256(conf.getString("cookie.secret"))
+    zhongl.stream.oauth2.JwtCookie(conf.getString("cookie.name"), conf.getString("cookie.domain"), algorithm, FiniteDuration(days, unit))
+  }
 }

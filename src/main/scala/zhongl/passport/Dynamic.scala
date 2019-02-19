@@ -14,7 +14,8 @@
  *    limitations under the License.
  */
 
-package fun.zhongl.passport
+package zhongl.passport
+
 import java.util.regex.Pattern
 
 import akka.NotUsed

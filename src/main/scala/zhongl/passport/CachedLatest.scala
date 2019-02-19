@@ -14,7 +14,8 @@
  *    limitations under the License.
  */
 
-package fun.zhongl.passport
+package zhongl.passport
+
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 

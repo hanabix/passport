@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package fun.zhongl.passport
+package zhongl.passport
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes.`text/html(UTF-8)`
