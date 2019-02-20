@@ -18,27 +18,22 @@ package zhongl.passport
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse}
-import akka.http.scaladsl.server.{Directives, Route}
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.Flow
-import spray.json._
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.headers.Host
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.stream.scaladsl.{Flow, TLSPlacebo}
+import akka.stream.{FlowShape, Graph}
+import akka.util.ByteString
 
-import scala.collection.immutable
+object Echo extends {
 
-object Echo extends Directives with DefaultJsonProtocol {
+  type Shape = FlowShape[HttpRequest, HttpResponse]
 
-  type Shape = Flow[HttpRequest, HttpResponse, NotUsed]
-
-  def apply()(implicit sys: ActorSystem): Shape = {
-    implicit val mat = ActorMaterializer()
-    implicit val f   = jsonFormat4(InspectedRequest)
-
-    Route.handlerFlow((extractRequest & entity(as[String])) { (req, body) =>
-      val ir = InspectedRequest(req.method.value, req.uri.toString(), req.headers.map(_.toString()), body)
-      complete(HttpEntity(ContentTypes.`application/json`, ir.toJson.compactPrint))
-    })
+  def apply()(implicit sys: ActorSystem): Graph[Shape, NotUsed] = {
+    val echo = Flow[ByteString].map { bs =>
+      ByteString(s"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${bs.size}\r\n\r\n") ++ bs
+    }
+    Http().clientLayer(Host("echo")).atop(TLSPlacebo()).join(echo)
   }
 
-  final case class InspectedRequest(method: String, uri: String, headers: immutable.Seq[String], body: String)
 }
