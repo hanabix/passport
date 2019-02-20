@@ -42,13 +42,15 @@ final class Docker(base: Uri, outgoing: () => Flow[HttpRequest, HttpResponse, _]
     val request = HttpRequest(uri = base.copy(path = Path / "events").withQuery(query))
     Source
       .single(request)
-      .log("Docker Events").withAttributes(Attributes.logLevels(Logging.InfoLevel))
+      .log("Docker events request")
+      .withAttributes(Attributes.logLevels(Logging.InfoLevel))
       .via(outgoing())
-      .log("Docker Events").withAttributes(Attributes.logLevels(Logging.InfoLevel))
+      .log("Docker events response")
+      .withAttributes(Attributes.logLevels(Logging.InfoLevel))
       .flatMapConcat {
         case HttpResponse(StatusCodes.OK, _, Chunked(ContentTypes.`application/json`, chunks), _) => chunks
       }
-      .log("Docker Events")
+      .log("Docker events push")
       .map(_.data())
   }
 
@@ -65,13 +67,15 @@ final class Docker(base: Uri, outgoing: () => Flow[HttpRequest, HttpResponse, _]
     val request = HttpRequest(uri = base.copy(path = path).withQuery(query))
     Flow[A]
       .map(_ => request)
-      .log(s"Docker $path").withAttributes(Attributes.logLevels(Logging.InfoLevel))
+      .log(s"Docker $path request")
+      .withAttributes(Attributes.logLevels(Logging.InfoLevel))
       .via(outgoing())
-      .log(s"Docker $path").withAttributes(Attributes.logLevels(Logging.InfoLevel))
+      .log(s"Docker $path response")
+      .withAttributes(Attributes.logLevels(Logging.InfoLevel))
       .mapAsync(1) {
         case HttpResponse(StatusCodes.OK, _, entity, _) => Unmarshal(entity).to[B]
       }
-      .log(s"Docker $path")
+      .log(s"Docker $path unmarshal")
   }
 }
 
@@ -83,13 +87,17 @@ object Docker {
   def apply(host: String = fromEnv)(implicit system: ActorSystem): Docker = {
     Uri(host) match {
       case Uri("unix", _, Path(p), _, _) =>
-        val file = new File(p)
-        val http = Http().clientLayer(Host("localhost")).atop(TLSPlacebo())
-        val uds  = UnixDomainSocket()
-        new Docker(Uri("http://localhost"), () => http.join(uds.outgoingConnection(file)))
+        new Docker(Uri("http://localhost"), unixDomainSocket(new File(p)))
+
       case u =>
-        throw new IllegalStateException(s"Unsupported $host, it must be started with unix://")
+        new Docker(u.withScheme("http"), () => Forward().mapAsync(1)(identity))
     }
+  }
+
+  private def unixDomainSocket(file: File)(implicit system: ActorSystem) = { () =>
+    val http      = Http().clientLayer(Host("localhost")).atop(TLSPlacebo())
+    val transport = UnixDomainSocket().outgoingConnection(file).mapMaterializedValue(_ => NotUsed)
+    http.join(transport)
   }
 
   private def fromEnv = {

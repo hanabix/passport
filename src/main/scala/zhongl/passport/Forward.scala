@@ -26,8 +26,5 @@ import akka.stream.scaladsl.Flow
 import scala.concurrent.Future
 
 object Forward {
-
-  type Shape = Flow[HttpRequest, Future[HttpResponse], NotUsed]
-
-  def apply()(implicit system: ActorSystem): Shape = Flow[HttpRequest].map(Http().singleRequest(_))
+  def apply()(implicit system: ActorSystem): Flow[HttpRequest, Future[HttpResponse], NotUsed] = Flow[HttpRequest].map(Http().singleRequest(_))
 }

@@ -22,14 +22,11 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.headers.Host
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.{Flow, TLSPlacebo}
-import akka.stream.{FlowShape, Graph}
 import akka.util.ByteString
 
 object Echo extends {
 
-  type Shape = FlowShape[HttpRequest, HttpResponse]
-
-  def apply()(implicit sys: ActorSystem): Graph[Shape, NotUsed] = {
+  def apply()(implicit sys: ActorSystem): Flow[HttpRequest, HttpResponse, NotUsed] = {
     val echo = Flow[ByteString].map { bs =>
       ByteString(s"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${bs.size}\r\n\r\n") ++ bs
     }

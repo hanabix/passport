@@ -21,7 +21,7 @@ import java.util.regex.Pattern
 import akka.NotUsed
 import akka.event.Logging
 import akka.http.scaladsl.model.headers.Host
-import akka.stream.scaladsl.{Flow, Source}
+import akka.stream.scaladsl.{Flow, Keep, Source}
 import akka.stream.{Attributes, Materializer}
 import akka.util.ByteString
 
@@ -48,7 +48,7 @@ object Dynamic {
     Source
       .single(ByteString.empty)
       .orElse(events)
-      .via(flow)
+      .viaMat(flow)(Keep.right)
       .log("Dynamic").withAttributes(Attributes.logLevels(Logging.InfoLevel))
       .via(CachedLatest())
       .map(redirect)
