@@ -16,128 +16,78 @@
 
 package zhongl.passport
 
-import akka.NotUsed
-import akka.http.scaladsl.model.StatusCodes.{BadGateway, BadRequest, InternalServerError, LoopDetected}
+import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers._
-import akka.stream.scaladsl.{Flow, GraphDSL, Source, ZipWith2}
-import akka.stream.{FlowShape, Graph}
 
 import scala.collection.immutable.Seq
+import scala.language.implicitConversions
+import scala.util.control.ControlThrowable
 
 object Rewrite {
 
-  type Shape = FlowShape[HttpRequest, Either[HttpResponse, HttpRequest]]
+  type Rewrite[A, B] = A => Either[B, A]
+  type Request       = Rewrite[HttpRequest, HttpResponse]
+  type Headers       = Rewrite[Seq[HttpHeader], HttpResponse]
 
-  trait Action extends (HttpRequest => Either[HttpResponse, HttpRequest]) {
-    def accumulate(header: HttpHeader): (Option[HttpHeader], Action)
+  implicit def asRequest(f: Headers): Request = r => f(r.headers).right.map(r.withHeaders)
+
+  implicit final class RequestOps(val f: Request) extends AnyVal {
+    def &(g: Request): Request = r => f(r).right.flatMap(g)
   }
 
-  def apply(mayBeDynamic: Option[Source[Host => Option[Host], NotUsed]], more: Action*): Graph[Shape, NotUsed] = {
-    mayBeDynamic.map(dynamicGraph(more)).getOrElse(Flow[HttpRequest].map(doRewrite(_, CompoundAction(List(HostOfUri()) ++ more))))
+  implicit final class HeadersOps(val f: Headers) extends AnyVal {
+    def &(g: Request): Request = r => f(r).right.flatMap(g)
   }
 
-  private def dynamicGraph(more: scala.Seq[Action]): Source[Host => Option[Host], NotUsed] => Graph[Shape, NotUsed] = { dynamic =>
-    GraphDSL.create() { implicit b =>
-      import GraphDSL.Implicits._
+  object XForwardedFor {
+    def apply(local: RemoteAddress): Headers = {
+      object DetectedLoop {
+        def unapply(arg: HttpHeader): Option[Seq[RemoteAddress]] = arg match {
+          case `X-Forwarded-For`(addresses) if addresses.contains(local) => Some(addresses)
+          case _                                                         => None
+        }
+      }
 
-      val source = b.add(dynamic.map(f => HostOfUri(redirect = f)).map(a => CompoundAction(List(a) ++ more)))
-      val zip    = b.add(new ZipWith2[HttpRequest, Action, Either[HttpResponse, HttpRequest]](doRewrite))
-
-      // format: OFF
-      source ~> zip.in1
-      // format: ON
-
-      new FlowShape(zip.in0, zip.out)
-    }
-  }
-
-  private def doRewrite(req: HttpRequest, action: Action): Either[HttpResponse, HttpRequest] = {
-    req.headers
-      .foldLeft(List.empty[HttpHeader] -> action) {
-        case ((acc, r), h) =>
-          r.accumulate(h) match {
-            case (None, r0)     => acc         -> r0
-            case (Some(h0), r0) => (h0 :: acc) -> r0
+      in =>
+        try {
+          in.foldLeft((List.empty[HttpHeader], Aggregated())) {
+            case (_, DetectedLoop(addresses))         => throw LoopDetectedException(addresses)
+            case ((hs, a), `Remote-Address`(address)) => (hs, a.copy(remote = Some(address)))
+            case ((hs, a), h: `X-Forwarded-For`)      => (hs, a.copy(origin = Some(h)))
+            case ((hs, a), h)                         => (h :: hs, a)
+          } match {
+            case (hs, a) =>
+              a.origin
+                .map(f => `X-Forwarded-For`(f.addresses :+ local))
+                .orElse(a.remote.map(f => `X-Forwarded-For`(f, local)))
+                .map(h => h :: hs)
+                .map(_.reverse)
+                .toRight(HttpResponse(InternalServerError, entity = "Missing remote address"))
           }
-      } match {
-      case (hs, rewrite) => rewrite(req.copy(headers = hs))
+        } catch {
+          case LoopDetectedException(addresses) => Left(HttpResponse(LoopDetected, entity = addresses.mkString(",")))
+        }
     }
+
+    private final case class Aggregated(origin: Option[`X-Forwarded-For`] = None, remote: Option[RemoteAddress] = None)
+    private final case class LoopDetectedException(addressed: Seq[RemoteAddress]) extends ControlThrowable
   }
 
-  final case class HostOfUri(host: Option[Host] = None, redirect: Host => Option[Host] = Some(_)) extends Action {
-    override def accumulate(header: HttpHeader): (Option[HttpHeader], Action) = header match {
-      case h: Host => Some(h) -> HostOfUri(Some(h), redirect)
-      case h       => Some(h) -> this
-    }
+  object IgnoreHeader {
+    def apply(f: HttpHeader => Boolean): Headers = hs => Right(hs.filterNot(f))
+  }
 
-    override def apply(req: HttpRequest): Either[HttpResponse, HttpRequest] = {
-      host
+  object HostOfUri {
+    def apply(redirect: Host => Option[Host] = Some(_)): Request = { r =>
+      r.headers
+        .collectFirst { case h: Host => h }
         .toRight(HttpResponse(BadRequest, entity = "Missing host header"))
-        .map(redirect)
-        .flatMap(_.toRight(HttpResponse(BadGateway, entity = "No matched host rule")))
-        .map(h => req.uri.authority.copy(host = h.host, port = h.port))
-        .map(a => req.uri.copy(authority = a))
-        .map(u => req.copy(uri = u))
+        .flatMap(h => redirect(h).toRight(HttpResponse(BadGateway, entity = "No matched host rule")))
+        .map(h => r.uri.authority.copy(h.host, h.port))
+        .map(r.uri.withAuthority)
+        .map(r.withUri)
     }
   }
 
-  /**
-    *
-    */
-  final case class Forwarded(
-      local: RemoteAddress,
-      remote: Option[RemoteAddress] = None,
-      forwarded: Option[`X-Forwarded-For`] = None,
-      error: Option[HttpResponse] = None
-  ) extends Action {
-    override def accumulate(header: HttpHeader): (Option[HttpHeader], Action) = header match {
-      case DetectedLoop(addresses)   => (None, copy(error = Some(HttpResponse(LoopDetected, entity = addresses.mkString(",")))))
-      case h: `X-Forwarded-For`      => (None, copy(forwarded = Some(h)))
-      case `Remote-Address`(address) => (None, copy(remote = Some(address)))
-      case h                         => (Some(h), this)
-    }
-
-    override def apply(req: HttpRequest): Either[HttpResponse, HttpRequest] = {
-      error.toLeft(Unit).flatMap { _ =>
-        forwarded
-          .map(f => `X-Forwarded-For`(f.addresses :+ local))
-          .orElse(remote.map(f => `X-Forwarded-For`(f, local)))
-          .map(h => req.copy(headers = h +: req.headers))
-          .toRight(HttpResponse(InternalServerError, entity = "Missing remote address"))
-      }
-    }
-
-    object DetectedLoop {
-      def unapply(arg: HttpHeader): Option[Seq[RemoteAddress]] = arg match {
-        case `X-Forwarded-For`(addresses) if addresses.contains(local) => Some(addresses)
-        case _                                                         => None
-      }
-    }
-
-  }
-
-  /**
-    *
-    */
-  object IgnoreTimeoutAccess extends Action {
-    override def accumulate(header: HttpHeader): (Option[HttpHeader], Action) = header match {
-      case _: `Timeout-Access` => None    -> this
-      case h                   => Some(h) -> this
-    }
-
-    override def apply(req: HttpRequest): Either[HttpResponse, HttpRequest] = Right(req)
-  }
-
-  final case class CompoundAction(seq: Seq[_ <: Action]) extends Action {
-    override def accumulate(header: HttpHeader): (Option[HttpHeader], Action) = {
-      val (hs, cs) = seq.map(_.accumulate(header)).unzip
-      (hs.find(_.isEmpty).getOrElse(Some(header)), CompoundAction(cs))
-    }
-
-    override def apply(req: HttpRequest): Either[HttpResponse, HttpRequest] = seq.foldLeft[Either[HttpResponse, HttpRequest]](Right(req)) {
-      case (Right(r), f) => f(r)
-      case (e, _)        => e
-    }
-  }
 }
