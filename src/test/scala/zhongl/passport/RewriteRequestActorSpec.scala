@@ -25,14 +25,14 @@ import akka.http.scaladsl.model.{ContentTypes, Uri}
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream.ActorMaterializer
 import akka.stream.alpakka.unixdomainsocket.scaladsl.UnixDomainSocket
-import akka.stream.scaladsl.{Sink, Source, TLSPlacebo}
+import akka.stream.scaladsl.{Source, TLSPlacebo}
 import akka.util.ByteString
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class DynamicSpec extends WordSpec with Matchers with BeforeAndAfterAll with Directives with Docker.JsonSupport {
+class RewriteRequestActorSpec extends WordSpec with Matchers with BeforeAndAfterAll with Directives with Docker.JsonSupport {
 
   private implicit val system = ActorSystem(getClass.getSimpleName)
   private implicit val mat    = ActorMaterializer()
@@ -52,24 +52,8 @@ class DynamicSpec extends WordSpec with Matchers with BeforeAndAfterAll with Dir
 
   private val docker = Docker(Uri(file.toURI.toString).withScheme("unix").toString())
 
-  "Dynamic" should {
+  "RewriteRequestActor" should {
 
-    "111" in {
-      val f = Dynamic.by(docker).apply("docker").runForeach(println)
-      Await.result(f, Duration.Inf)
-
-    }
-
-    "by docker local" ignore  {
-      val f = Dynamic.by(docker).apply("docker").runWith(Sink.head)
-      Await.result(f, Duration.Inf) shouldBe List(".+" -> "demo:8080")
-
-    }
-
-    "by docker swarm" ignore  {
-      val f = Dynamic.by(docker).apply("swarm").runWith(Sink.head)
-      Await.result(f, Duration.Inf) shouldBe List(".+" -> "demo")
-    }
 
   }
 

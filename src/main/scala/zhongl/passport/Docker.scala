@@ -56,10 +56,8 @@ class Docker(base: Uri, outgoing: () => Graph[FlowShape[HttpRequest, HttpRespons
       .single(request)
       .via(outgoing())
       .log(s"docker events")
-      .withAttributes(Attributes.logLevels(Logging.WarningLevel))
+      .withAttributes(Attributes.logLevels(Logging.InfoLevel))
       .flatMapConcat(chunks)
-      .log("docker flat")
-      .withAttributes(Attributes.logLevels(Logging.WarningLevel))
       .map(_.data())
   }
 
@@ -79,14 +77,13 @@ class Docker(base: Uri, outgoing: () => Graph[FlowShape[HttpRequest, HttpRespons
       case HttpResponse(StatusCodes.OK, _, entity, _) => Unmarshal(entity).to[T]
     }
 
-    val get = Source
-      .single(request)
+    Flow[Any]
+      .map(_ => request)
       .via(outgoing())
       .log(s"docker $path")
       .withAttributes(Attributes.logLevels(Logging.InfoLevel))
       .mapAsync(1)(unmarshal)
       .log(s"docker $path")
-    Flow.fromSinkAndSource(Sink.ignore, get)
   }
 }
 

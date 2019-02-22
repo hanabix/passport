@@ -81,8 +81,7 @@ object Handle {
     val base = IgnoreHeader(_.isInstanceOf[`Timeout-Access`]) & XForwardedFor(local)
 
     dynamic
-      .map(Dynamic.by(Docker()))
-      .map(s => system.actorOf(RewriteRequestActor.props(base, s), "RewriteRequest"))
+      .map(s => system.actorOf(RewriteRequestActor.props(base, Docker())(s), "RewriteRequest"))
       .map(a => Flow[HttpRequest].ask[Either[HttpResponse, HttpRequest]](a))
       .getOrElse(Flow[HttpRequest].map(base & HostOfUri()))
   }

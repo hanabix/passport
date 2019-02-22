@@ -18,13 +18,14 @@ package zhongl.passport
 
 import java.util.regex.Pattern
 
+import akka.NotUsed
 import akka.actor.Status.{Failure, Success}
 import akka.actor.{Actor, ActorLogging, Props, Stash}
-import akka.event.Logging
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.Host
-import akka.stream.scaladsl.{Sink, Source}
-import akka.stream.{ActorMaterializer, Attributes}
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.util.ByteString
 import zhongl.passport.Rewrite.Request
 
 final class RewriteRequestActor private (base: Rewrite.Request, source: Source[List[(String, String)], Any])
@@ -38,12 +39,12 @@ final class RewriteRequestActor private (base: Rewrite.Request, source: Source[L
   private implicit val mat = ActorMaterializer()(context)
   private implicit val ex  = context.dispatcher
 
-  source.log("update").withAttributes(Attributes.logLevels(Logging.InfoLevel)).map(locate).runWith(Sink.actorRef(self, Complete))
+  source.map(locate).runWith(Sink.actorRef(self, Complete))
 
   override def receive: Receive = {
     case Failure(cause) => dying(cause)
     case Locate(g)      => unstashAll(); context.become(rewrite(HostOfUri(g) & base))
-    case Complete       => log.info(s"init receive complete"); context.stop(self)
+    case Complete       => context.stop(self)
     case m              => log.info(s"init receive $m"); stash()
   }
 
@@ -68,7 +69,7 @@ final class RewriteRequestActor private (base: Rewrite.Request, source: Source[L
     }
   }
 
-  private def locate(rules: List[(String, String)]): Host => Option[Host] = {
+  private def locate(rules: List[(String, String)]): Locate = {
     val rs = rules.map { p =>
       p._1.split("\\s*\\|>\\|\\s*:", 2) match {
         case Array(r, port) => (Pattern.compile(r), Host(p._2, port.toInt))
@@ -76,16 +77,35 @@ final class RewriteRequestActor private (base: Rewrite.Request, source: Source[L
       }
     }
 
-    host =>
-      rs.find(p => p._1.matcher(host.host.address()).matches())
-        .map(p => p._2)
+    Locate(host => rs.find(p => p._1.matcher(host.host.address()).matches()).map(p => p._2))
   }
 
 }
 
 object RewriteRequestActor {
 
-  def props(base: Request, source: Source[List[(String, String)], Any]): Props = Props(new RewriteRequestActor(base, source))
+  type Filters = Map[String, List[String]]
+
+  private val label = "passport.rule"
+
+  def props(base: Request, docker: Docker): String => Props = {
+    case "docker" =>
+      val filters = Map("scope" -> List("local"), "type" -> List("container"), "event" -> List("start", "destroy"))
+      val update  = docker.containers(_: Filters).map(_.map(c => c.`Labels`(label) -> c.`Names`.head.substring(1)))
+      props(base, source(docker.events(filters), update))
+    case _ =>
+      val filters = Map("scope" -> List("swarm"), "type" -> List("service"), "event" -> List("update", "remove"))
+      val update  = docker.services(_: Filters).map(_.map(c => c.`Spec`.`Labels`(label) -> c.`Spec`.`Name`))
+      props(base, source(docker.events(filters), update))
+  }
+
+  def props(base: Request, source: Source[List[(String, String)], Any]): Props = {
+    Props(new RewriteRequestActor(base, source))
+  }
+
+  private def source(events: Source[ByteString, Any], update: Filters => Flow[Any, List[(String, String)], NotUsed]) = {
+    Source.single(ByteString.empty).concat(events).via(update(Map("label" -> List(label))))
+  }
 
   private sealed trait Message
   private final case class Locate(g: Host => Option[Host]) extends Message
