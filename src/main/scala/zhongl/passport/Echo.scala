@@ -19,7 +19,7 @@ package zhongl.passport
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.headers.Host
+import akka.http.scaladsl.model.headers.{Host, `Timeout-Access`}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.{Flow, TLSPlacebo}
 import akka.util.ByteString
@@ -27,10 +27,14 @@ import akka.util.ByteString
 object Echo extends {
 
   def apply()(implicit sys: ActorSystem): Flow[HttpRequest, HttpResponse, NotUsed] = {
+    import Rewrite._
     val echo = Flow[ByteString].map { bs =>
       ByteString(s"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${bs.size}\r\n\r\n") ++ bs
     }
-    Http().clientLayer(Host("echo")).atop(TLSPlacebo()).join(echo)
+    Flow[HttpRequest]
+      .map(IgnoreHeader(_.isInstanceOf[`Timeout-Access`]))
+      .map(_.right.get)
+      .via(Http().clientLayer(Host("echo")).atop(TLSPlacebo()).join(echo))
   }
 
 }

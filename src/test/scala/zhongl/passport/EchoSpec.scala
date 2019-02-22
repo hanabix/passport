@@ -17,11 +17,14 @@
 package zhongl.passport
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.headers.`User-Agent`
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse}
+import akka.http.scaladsl.model.ContentType.WithMissingCharset
+import akka.http.scaladsl.model.HttpEntity.Strict
+import akka.http.scaladsl.model.headers.Host
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse, MediaTypes}
 import akka.http.scaladsl.server.Directives
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
+import akka.util.ByteString
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
 
 import scala.concurrent.Await
@@ -34,12 +37,13 @@ class EchoSpec extends WordSpec with Matchers with BeforeAndAfterAll with Direct
   "Echo" should {
     "handle" in {
       val future = Source
-        .single(HttpRequest(uri = "http://a.b", headers = List(`User-Agent`("mock"))))
+        .single(HttpRequest(uri = "http://foo.bar", headers = List(Host("foo.bar"))))
         .via(Echo())
         .runWith(Sink.head)
-      Await.result(future, Duration.Inf) shouldBe HttpResponse(
-        entity = HttpEntity(ContentTypes.`application/json`, """{"body":"","headers":["User-Agent: mock"],"method":"GET","uri":"http://a.b"}""")
-      )
+      Await.result(future, Duration.Inf) match {
+        case HttpResponse(_, _, Strict(WithMissingCharset(MediaTypes.`text/plain`), bs), _) =>
+          bs.decodeString(ByteString.UTF_8) shouldBe "GET http://foo.bar HTTP/1.1\r\nHost: foo.bar\r\nUser-Agent: akka-http/10.1.6\r\n\r\n"
+      }
     }
   }
 

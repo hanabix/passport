@@ -18,39 +18,28 @@ package zhongl.passport
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.headers.Host
+import akka.http.scaladsl.model.headers.`Timeout-Access`
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import akka.http.scaladsl.util.FastFuture
-import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Source}
-import akka.stream.{ActorMaterializer, FlowShape}
-import zhongl.passport.Rewrite._
+import akka.stream.FlowShape
+import akka.stream.scaladsl.{Flow, GraphDSL, Merge}
+import akka.util.Timeout
 import zhongl.stream.oauth2.Guard
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.util.Try
 import scala.util.control.NonFatal
 
 object Handle {
 
-  def apply(mayBeDynamic: Option[Source[Host => Option[Host], NotUsed]])(implicit system: ActorSystem): Flow[HttpRequest, HttpResponse, NotUsed] = {
-    implicit val ex  = system.dispatcher
-    implicit val mat = ActorMaterializer()
-
-    val config = system.settings.config
-    val jc     = JwtCookie.apply(config)
-    val ignore = jc.unapply(_: HttpRequest).isDefined
-    val plugin = Platforms.bound(config)
-    val local = Try { config.getString("interface") }.toOption
-      .orElse(NetworkInterfaces.findFirstNetworkInterfaceHasInet4Address.map(_.getName))
-      .flatMap(NetworkInterfaces.localAddress)
-      .getOrElse(throw new IllegalStateException("Unavailable local address"))
-
+  def apply(dynamic: Option[String])(implicit system: ActorSystem): Flow[HttpRequest, HttpResponse, NotUsed] = {
     val graph = GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
 
-      val guard   = b.add(Guard.graph(plugin.oauth2(jc.generate), ignore))
+      val guard   = b.add(guardShape())
       val merge   = b.add(Merge[Future[HttpResponse]](3))
-      val rewrite = b.add(Rewrite(mayBeDynamic, IgnoreTimeoutAccess, Forwarded(local)))
+      val rewrite = b.add(rewriteShape(dynamic))
       val fork    = b.add(EitherFork[HttpResponse, HttpRequest]())
       val future  = b.add(Flow[HttpResponse].map(FastFuture.successful))
       val forward = b.add(Forward())
@@ -68,5 +57,33 @@ object Handle {
     Flow[HttpRequest].via(graph).mapAsync(1)(identity).recover {
       case NonFatal(cause) => HttpResponse(StatusCodes.InternalServerError, entity = cause.toString)
     }
+  }
+
+  private def guardShape()(implicit system: ActorSystem) = {
+    val config = system.settings.config
+    val jc     = JwtCookie.apply(config)
+    val ignore = jc.unapply(_: HttpRequest).isDefined
+    val plugin = Platforms.bound(config)
+
+    Guard.graph(plugin.oauth2(jc.generate), ignore)(system.dispatcher)
+  }
+
+  private def rewriteShape(dynamic: Option[String])(implicit system: ActorSystem) = {
+    import Rewrite._
+
+    implicit val timeout = Timeout(2.seconds)
+
+    val local = Try { system.settings.config.getString("interface") }.toOption
+      .orElse(NetworkInterfaces.findFirstNetworkInterfaceHasInet4Address.map(_.getName))
+      .flatMap(NetworkInterfaces.localAddress)
+      .getOrElse(throw new IllegalStateException("Unavailable local address"))
+
+    val base = IgnoreHeader(_.isInstanceOf[`Timeout-Access`]) & XForwardedFor(local)
+
+    dynamic
+      .map(Dynamic.by(Docker()))
+      .map(s => system.actorOf(RewriteRequestActor.props(base, s), "RewriteRequest"))
+      .map(a => Flow[HttpRequest].ask[Either[HttpResponse, HttpRequest]](a))
+      .getOrElse(Flow[HttpRequest].map(base & HostOfUri()))
   }
 }

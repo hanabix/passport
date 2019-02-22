@@ -16,7 +16,6 @@
 
 package zhongl.passport
 
-import akka.NotUsed
 import akka.actor.{ActorSystem, Terminated}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
@@ -51,14 +50,14 @@ object Main extends Directives {
       case Opt(host, port, true, _) =>
         (host, port, Echo())
       case Opt(host, port, _, d) =>
-        (host, port, Handle(d.map(Dynamic.by(Docker()))))
+        (host, port, Handle(d))
     } map {
       case (host, port, flow) => bind(flow, host, port)
     } getOrElse system.terminate()
 
   }
 
-  private def bind(flow: Flow[HttpRequest, HttpResponse, NotUsed], host: String, port: Int)(implicit system: ActorSystem) = {
+  private def bind(flow: Flow[HttpRequest, HttpResponse, Any], host: String, port: Int)(implicit system: ActorSystem) = {
     implicit val mat = ActorMaterializer()
     implicit val ex  = system.dispatcher
 

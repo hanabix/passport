@@ -16,12 +16,11 @@
 
 package zhongl.passport
 
-import java.io.File
+import java.nio.file.Files
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.HttpEntity.{Chunk, Chunked}
-import akka.http.scaladsl.model.headers.Host
+import akka.http.scaladsl.model.HttpEntity.Chunked
 import akka.http.scaladsl.model.{ContentTypes, Uri}
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream.ActorMaterializer
@@ -37,8 +36,14 @@ class DynamicSpec extends WordSpec with Matchers with BeforeAndAfterAll with Dir
 
   private implicit val system = ActorSystem(getClass.getSimpleName)
   private implicit val mat    = ActorMaterializer()
+  private implicit val ex     = system.dispatcher
 
-  private val file = new File("target", "passport.sock")
+  private val file = {
+    val f = Files.createTempFile("passport", "sock").toFile
+    f.delete()
+    f.deleteOnExit()
+    f
+  }
 
   private val bound = {
     val flow = mockDockerDaemon.join(Http().serverLayer()).join(TLSPlacebo())
@@ -48,22 +53,30 @@ class DynamicSpec extends WordSpec with Matchers with BeforeAndAfterAll with Dir
   private val docker = Docker(Uri(file.toURI.toString).withScheme("unix").toString())
 
   "Dynamic" should {
-    "by docker local" in {
-      val f = Dynamic.by(docker).apply("docker").runWith(Sink.head)
-      Await.result(f, Duration.Inf)(Host("foo.bar")) shouldBe Some(Host("demo", 8080))
+
+    "111" in {
+      val f = Dynamic.by(docker).apply("docker").runForeach(println)
+      Await.result(f, Duration.Inf)
+
     }
 
-    "by docker swarm" in {
+    "by docker local" ignore  {
+      val f = Dynamic.by(docker).apply("docker").runWith(Sink.head)
+      Await.result(f, Duration.Inf) shouldBe List(".+" -> "demo:8080")
+
+    }
+
+    "by docker swarm" ignore  {
       val f = Dynamic.by(docker).apply("swarm").runWith(Sink.head)
-      Await.result(f, Duration.Inf)(Host("foo.bar")) shouldBe Some(Host("demo", 0))
+      Await.result(f, Duration.Inf) shouldBe List(".+" -> "demo")
     }
 
   }
 
   def mockDockerDaemon: Route = get {
     concat(
-      (path("events") & parameter("filters")) { _ =>
-        complete(Chunked(ContentTypes.`application/json`, Source.repeat(Chunk(ByteString(" ")))))
+      path("events") {
+        complete(Chunked.fromData(ContentTypes.`application/json`, Source.repeat(ByteString("1")).delay(1.second)))
       },
       (path("containers" / "json") & parameter("filters")) { _ =>
         complete(List(Docker.Container("id", List("/demo"), Map("passport.rule" -> ".+|>|:8080"))))

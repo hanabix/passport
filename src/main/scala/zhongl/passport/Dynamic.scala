@@ -16,13 +16,8 @@
 
 package zhongl.passport
 
-import java.util.regex.Pattern
-
 import akka.NotUsed
-import akka.event.Logging
-import akka.http.scaladsl.model.headers.Host
-import akka.stream.scaladsl.{Flow, Keep, Source}
-import akka.stream.{Attributes, Materializer}
+import akka.stream.scaladsl.{Flow, Source}
 import akka.util.ByteString
 
 object Dynamic {
@@ -30,41 +25,24 @@ object Dynamic {
 
   val filterByLabel = Map("label" -> List(label))
 
-  def by(docker: Docker)(implicit mat: Materializer): String => Source[Host => Option[Host], NotUsed] = {
+  def by(docker: Docker): String => Source[List[(String, String)], NotUsed] = {
     case "docker" =>
-      arrange(
+      source(
         docker.events(Map("scope" -> List("local"), "type" -> List("container"), "event" -> List("start", "destroy"))),
         docker.containers(filterByLabel).map(_.map(c => c.`Labels`(label) -> c.`Names`.head.substring(1)))
       )
-
     case _ =>
-      arrange(
+      source(
         docker.events(Map("scope" -> List("swarm"), "type" -> List("service"), "event" -> List("update", "remove"))),
         docker.services(filterByLabel).map(_.map(c => c.`Spec`.`Labels`(label) -> c.`Spec`.`Name`))
       )
   }
 
-  private def arrange(events: Source[ByteString, NotUsed], flow: Flow[Any, List[(String, String)], NotUsed]) = {
-    Source
-      .single(ByteString.empty)
-      .orElse(events)
-      .viaMat(flow)(Keep.right)
-      .log("Dynamic").withAttributes(Attributes.logLevels(Logging.InfoLevel))
-      .via(CachedLatest())
-      .map(redirect)
-  }
-
-  private def redirect(rules: List[(String, String)]): Host => Option[Host] = {
-    val rs = rules.map { p =>
-      p._1.split("\\s*\\|>\\|\\s*:", 2) match {
-        case Array(r, port) => (Pattern.compile(r), Host(p._2, port.toInt))
-        case Array(r)       => (Pattern.compile(r), Host(p._2, 0))
-      }
-    }
-
-    host =>
-      rs.find(p => p._1.matcher(host.host.address()).matches())
-        .map(p => p._2)
+  private def source(
+      events: Source[ByteString, Any],
+      get: Flow[Any, List[(String, String)], NotUsed]
+  ): Source[List[(String, String)], NotUsed] = {
+    Source.single(ByteString.empty).concat(events).via(get)
   }
 
 
