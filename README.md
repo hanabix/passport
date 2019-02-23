@@ -76,16 +76,18 @@ wechat {
 若需要在真正部署之前进行调试验证, 可在运行时指定`-e`:
 
 ```sh
-docker run --rm -v $(pwd)/app.conf:/app.conf -e JAVA_OPTS=-Dconfig.file=/app.conf zhongl/passport -e
+docker run --rm -it zhongl/passport:latest -e
 ```
 
-开启**Echo**模式, 即扫码登录后 Passport 不转发请求, 而是显示当前用户信息.
+开启**Echo**模式, 显示请求文本.
 
-> `--help` 查看更多帮助
+> `docker run --rm zhongl/passport:latest --help` 查看更多帮助
 
-# 应用集成
+## 应用集成
 
-> TODO
+扫码登录后, Passport 会产生一个加签过的 [JWT](https://jwt.io) Token 作为 Cookie, 其中包含当前用户的认证信息(钉钉和微信略有差异). 此 Cookie 也会在后续的请求中透传到合法目标服务器, 做进一步授权处理.
+
+> 认证信息参见[Platforms.scala](https://github.com/zhongl/passport/blob/master/src/main/scala/zhongl/passport/Platforms.scala)
 
 ## References
 
