@@ -20,15 +20,15 @@ import java.util.concurrent.TimeUnit
 
 import com.auth0.jwt.algorithms.Algorithm
 import com.typesafe.config.Config
-import zhongl.stream.oauth2.JwtCookie
+import zhongl.stream.oauth2.{JwtCookie => JC}
 
 import scala.concurrent.duration.FiniteDuration
 
 object JwtCookie {
-  def apply(conf: Config): JwtCookie = {
+  def apply(conf: Config): JC = {
     val unit      = TimeUnit.DAYS
     val days      = conf.getDuration("cookie.expires_in", unit)
     val algorithm = Algorithm.HMAC256(conf.getString("cookie.secret"))
-    zhongl.stream.oauth2.JwtCookie(conf.getString("cookie.name"), conf.getString("cookie.domain"), algorithm, FiniteDuration(days, unit))
+    JC(conf.getString("cookie.name"), conf.getString("cookie.domain"), algorithm, FiniteDuration(days, unit))
   }
 }
