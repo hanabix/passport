@@ -6,10 +6,19 @@
 
 Passport 是一个超轻量级统一认证网关, 面向使用 [钉钉](https://www.dingtalk.com) 或是 [企业微信](https://work.weixin.qq.com/) 的创业团队提供手机扫码登录访问内部服务.
 
+## 跑起来
 
-# 部署
+```sh
+curl -LkO https://github.com/zhongl/passport/raw/master/docker-compose.yml 
+curl -LkO https://github.com/zhongl/passport/raw/master/app.conf
+DOMAIN=foo.bar docker-compose up -d
+curl -k -v https://localhost -H 'Host: www.foo.bar' -H 'Cookie: jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwYXNzcG9ydCIsIm5hbWUiOiJ6aG9uZ2wiLCJleHAiOjE4NjYxNzI3MjV9.FomLr4SgRvHuI6iUnVZc2-Q9YQbNrh4eDWGbM09xoC8'
+```
 
-## 配置 app.conf
+- 细节请详见 [docker-compose.yml](https://github.com/zhongl/passport/blob/master/docker-compose.yml) . 
+
+
+## 配置 
 
 ### 钉钉
 
@@ -61,12 +70,6 @@ wechat {
 ```
 
 > 参见[企业内部开发](https://work.weixin.qq.com/api/doc#90000/90003/90487), 创建**应用**.
-
-## 运行
-
-```sh
-docker run -d -v $(pwd)/app.conf:/app.conf -e JAVA_OPTS=-Dconfig.file=/app.conf zhongl/passport
-```
 
 ## Echo调试
 

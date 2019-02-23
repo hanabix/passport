@@ -17,19 +17,17 @@
 package zhongl.passport
 
 import java.io.File
-import java.net.InetSocketAddress
 
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.event.Logging
+import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.HttpEntity.{ChunkStreamPart, Chunked}
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Host
-import akka.http.scaladsl.settings.ClientConnectionSettings
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
-import akka.http.scaladsl.{ClientTransport, Http}
 import akka.stream.alpakka.unixdomainsocket.scaladsl.UnixDomainSocket
 import akka.stream.scaladsl._
 import akka.stream.{ActorMaterializer, Attributes, FlowShape, Graph}
@@ -38,11 +36,11 @@ import spray.json._
 import zhongl.passport.Docker.{Container, Service}
 
 import scala.concurrent.Future
+import scala.util.matching.Regex
 
 class Docker(base: Uri, outgoing: () => Graph[FlowShape[HttpRequest, HttpResponse], Any])(implicit system: ActorSystem) extends Docker.JsonSupport {
 
   private implicit val mat = ActorMaterializer()
-  private implicit val ex  = system.dispatcher
 
   def events(filters: Map[String, List[String]]): Source[ByteString, Any] = {
     val query   = Uri.Query("filters" -> filters.toJson.compactPrint)
@@ -113,31 +111,57 @@ object Docker {
   final case class Service(`ID`: String, `Spec`: Spec)
   final case class Spec(`Name`: String, `Labels`: Map[String, String])
 
-  final class UnixSocketTransport(file: File) extends ClientTransport {
-    override def connectTo(
-        host: String,
-        port: Int,
-        settings: ClientConnectionSettings
-    )(implicit system: ActorSystem): Flow[ByteString, ByteString, Future[Http.OutgoingConnection]] = {
-
-      implicit val ex = system.dispatcher
-      val address     = InetSocketAddress.createUnresolved(host, port)
-
-      system.log.error(new Exception(), "connect")
-
-      UnixDomainSocket()
-        .outgoingConnection(file)
-        .mapMaterializedValue(_.map { _ =>
-          system.log.error(new Exception(), "materialize")
-          Http.OutgoingConnection(address, address)
-        })
-    }
-  }
-
   trait JsonSupport extends DefaultJsonProtocol with SprayJsonSupport {
     implicit val specF: JsonFormat[Spec]           = jsonFormat2(Spec)
     implicit val containerF: JsonFormat[Container] = jsonFormat3(Container)
     implicit val serviceF: JsonFormat[Service]     = jsonFormat2(Service)
+  }
+
+  object Mode {
+
+    type Rules   = List[(Regex, Host)]
+    type Filters = Map[String, List[String]]
+
+    private val rule = "passport.rule"
+
+    def unapply(arg: String): Option[Value] = arg match {
+      case "docker" => Some(Local)
+      case "swarm"  => Some(Swarm)
+      case _        => None
+    }
+
+    sealed trait Value {
+      def apply(docker: Docker): Source[Rules, NotUsed]
+    }
+
+    case object Local extends Value {
+      override def apply(docker: Docker): Source[Rules, NotUsed] = {
+        val filters = Map("scope" -> List("local"), "type" -> List("container"), "event" -> List("start", "destroy"))
+        val update = docker
+          .containers(_: Filters)
+          .map(_.map(c => c.`Labels`(rule).r -> Host(c.`Names`.head.substring(1), port(c.`Labels`))))
+        source(docker.events(filters), update)
+      }
+    }
+
+    case object Swarm extends Value {
+      override def apply(docker: Docker): Source[Rules, NotUsed] = {
+        val filters = Map("scope" -> List("swarm"), "type" -> List("service"), "event" -> List("update", "remove"))
+        val update = docker
+          .services(_: Filters)
+          .map(_.map(c => c.`Spec`.`Labels`(rule).r -> Host(c.`Spec`.`Name`, port(c.`Spec`.`Labels`))))
+        source(docker.events(filters), update)
+      }
+    }
+
+    private def port(labels: Map[String, String]): Int = {
+      labels.get("passport.port").map(_.toInt).getOrElse(0)
+    }
+
+    private def source(events: Source[ByteString, Any], update: Filters => Flow[Any, Rules, NotUsed]) = {
+      Source.single(ByteString.empty).concat(events).via(update(Map("label" -> List(rule))))
+    }
+
   }
 
 }

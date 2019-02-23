@@ -31,7 +31,7 @@ class HandlersSpec extends WordSpec with Matchers with BeforeAndAfterAll {
 
   "Handlers" should {
     "create a flow with guard" in {
-      val flow   = Handle(None)
+      val flow   = Handle(Source.repeat(List.empty))
       val future = Source.single(HttpRequest()).via(flow).runWith(Sink.head)
       Await.result(future, Duration.Inf) shouldBe HttpResponse(StatusCodes.Unauthorized)
     }

@@ -50,7 +50,7 @@ object Main extends Directives {
       case Opt(host, port, true, _) =>
         (host, port, Echo())
       case Opt(host, port, _, d) =>
-        (host, port, Handle(d))
+        (host, port, Handle(d(Docker())))
     } map {
       case (host, port, flow) => bind(flow, host, port)
     } getOrElse system.terminate()

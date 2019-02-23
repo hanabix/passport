@@ -22,7 +22,7 @@ import akka.http.scaladsl.model.headers.`Timeout-Access`
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import akka.http.scaladsl.util.FastFuture
 import akka.stream.FlowShape
-import akka.stream.scaladsl.{Flow, GraphDSL, Merge}
+import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Source}
 import akka.util.Timeout
 import zhongl.stream.oauth2.Guard
 
@@ -33,7 +33,7 @@ import scala.util.control.NonFatal
 
 object Handle {
 
-  def apply(dynamic: String)(implicit system: ActorSystem): Flow[HttpRequest, HttpResponse, NotUsed] = {
+  def apply(dynamic: Source[Docker.Mode.Rules, Any])(implicit system: ActorSystem): Flow[HttpRequest, HttpResponse, NotUsed] = {
     val graph = GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
 
@@ -68,7 +68,7 @@ object Handle {
     Guard.graph(plugin.oauth2(jc.generate), ignore)(system.dispatcher)
   }
 
-  private def rewriteShape(dynamic: String)(implicit system: ActorSystem) = {
+  private def rewriteShape(dynamic: Source[Docker.Mode.Rules, Any])(implicit system: ActorSystem) = {
     import Rewrite._
 
     implicit val timeout = Timeout(2.seconds)
@@ -80,7 +80,7 @@ object Handle {
 
     val base = IgnoreHeader(_.isInstanceOf[`Timeout-Access`]) & XForwardedFor(local)
 
-    val ref = system.actorOf(RewriteRequestActor.props(base, Docker())(dynamic), "RewriteRequest")
+    val ref = system.actorOf(RewriteRequestActor.props(dynamic, Some(base)), "RewriteRequest")
     Flow[HttpRequest].ask[Either[HttpResponse, HttpRequest]](ref)
   }
 }
