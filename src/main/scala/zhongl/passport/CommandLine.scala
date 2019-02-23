@@ -19,7 +19,7 @@ package zhongl.passport
 import scopt.OptionParser
 
 object CommandLine {
-  case class Opt(host: String = "0.0.0.0", port: Int = 8080, echo: Boolean = false, dynamic: Option[String] = None)
+  case class Opt(host: String = "0.0.0.0", port: Int = 8080, echo: Boolean = false, dynamic: String = "docker")
 
   val parser = new OptionParser[Opt]("passport") {
     head("passport", "0.0.1")
@@ -36,13 +36,14 @@ object CommandLine {
       .action((_, c) => c.copy(echo = true))
       .text("enable echo mode for debug, default is disable")
 
-    opt[String]('d', "dynamic")
-      .action((x, c) => c.copy(dynamic = Some(x)))
+    arg[String]("<dynamic mode>")
+      .required()
+      .action((x, c) => c.copy(dynamic = x))
       .validate {
         case "docker" | "swarm" => success
-        case _                  => failure("Option -d or --dynamic must be docker or swarm.")
+        case _                  => failure("dynamic mode must be docker or swarm.")
       }
-      .text("enable dynamic dispatch, which's value must be docker or swarm, default is disable")
+      .text("enable dynamic dispatch, which's value must be docker or swarm, default is docker")
 
     help("help").text("print this usage")
   }

@@ -33,7 +33,7 @@ import scala.util.control.NonFatal
 
 object Handle {
 
-  def apply(dynamic: Option[String])(implicit system: ActorSystem): Flow[HttpRequest, HttpResponse, NotUsed] = {
+  def apply(dynamic: String)(implicit system: ActorSystem): Flow[HttpRequest, HttpResponse, NotUsed] = {
     val graph = GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
 
@@ -68,7 +68,7 @@ object Handle {
     Guard.graph(plugin.oauth2(jc.generate), ignore)(system.dispatcher)
   }
 
-  private def rewriteShape(dynamic: Option[String])(implicit system: ActorSystem) = {
+  private def rewriteShape(dynamic: String)(implicit system: ActorSystem) = {
     import Rewrite._
 
     implicit val timeout = Timeout(2.seconds)
@@ -80,9 +80,7 @@ object Handle {
 
     val base = IgnoreHeader(_.isInstanceOf[`Timeout-Access`]) & XForwardedFor(local)
 
-    dynamic
-      .map(s => system.actorOf(RewriteRequestActor.props(base, Docker())(s), "RewriteRequest"))
-      .map(a => Flow[HttpRequest].ask[Either[HttpResponse, HttpRequest]](a))
-      .getOrElse(Flow[HttpRequest].map(base & HostOfUri()))
+    val ref = system.actorOf(RewriteRequestActor.props(base, Docker())(dynamic), "RewriteRequest")
+    Flow[HttpRequest].ask[Either[HttpResponse, HttpRequest]](ref)
   }
 }
