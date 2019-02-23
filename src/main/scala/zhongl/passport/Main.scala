@@ -14,9 +14,8 @@
  *    limitations under the License.
  */
 
-package fun.zhongl.passport
+package zhongl.passport
 
-import akka.NotUsed
 import akka.actor.{ActorSystem, Terminated}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
@@ -24,8 +23,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Flow
-import fun.zhongl.passport.CommandLine._
-import zhongl.stream.oauth2.Guard
+import zhongl.passport.CommandLine._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
@@ -47,25 +45,19 @@ object Main extends Directives {
 
   private def run(maybeOpt: Option[Opt])(implicit system: ActorSystem): Try[Future[Terminated]] = Try {
     implicit val mat = ActorMaterializer()
-    implicit val ex  = system.dispatcher
-
-    val jc     = JwtCookies.load(system.settings.config)
-    val ignore = jc.unapply(_: HttpRequest).isDefined
-    val plugin = Platforms.bound(system.settings.config)
-    val guard  = Guard.graph(plugin.oauth2(jc.generate), ignore)
 
     maybeOpt map {
-      case Opt(host, port, true) =>
-        (host, port, Echo.handle(plugin.userInfoFromCookie(jc.name)))
-      case Opt(host, port, _) =>
-        (host, port, Forward.handle)
+      case Opt(host, port, true, _) =>
+        (host, port, Echo())
+      case Opt(host, port, _, d) =>
+        (host, port, Handle(d(Docker())))
     } map {
-      case (host, port, handle) => bind(Handlers.prepend(guard, handle), host, port)
+      case (host, port, flow) => bind(flow, host, port)
     } getOrElse system.terminate()
 
   }
 
-  private def bind(flow: Flow[HttpRequest, HttpResponse, NotUsed], host: String, port: Int)(implicit system: ActorSystem) = {
+  private def bind(flow: Flow[HttpRequest, HttpResponse, Any], host: String, port: Int)(implicit system: ActorSystem) = {
     implicit val mat = ActorMaterializer()
     implicit val ex  = system.dispatcher
 
@@ -83,7 +75,7 @@ object Main extends Directives {
 
         promise.future
       }
-      .flatMap(_.unbind())
+      .flatMap(_.terminate(3.seconds))
       .flatMap(_ => system.terminate())
       .recoverWith {
         case cause: Throwable =>
