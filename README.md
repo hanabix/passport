@@ -1,6 +1,6 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/31c3f709c7c646ea80b7c4fcd130507b)](https://www.codacy.com/app/zhonglunfu/passport?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=zhongl/passport&amp;utm_campaign=Badge_Grade)
 [![Build Status](https://travis-ci.org/zhongl/passport.svg?branch=master)](https://travis-ci.org/zhongl/passport)
-[![Docker Version](https://img.shields.io/github/tag/zhongl/passport.svg)](https://hub.docker.com/r/zhongl/passport)
+[![GitHub release](https://img.shields.io/github/release/zhongl/passport.svg)](https://hub.docker.com/r/zhongl/passport)
 [![Coverage Status](https://coveralls.io/repos/github/zhongl/passport/badge.svg?branch=master)](https://coveralls.io/github/zhongl/passport?branch=master)
 
 
