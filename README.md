@@ -1,7 +1,7 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/31c3f709c7c646ea80b7c4fcd130507b)](https://www.codacy.com/app/zhonglunfu/passport?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=zhongl/passport&amp;utm_campaign=Badge_Grade)
 [![Build Status](https://travis-ci.org/zhongl/passport.svg?branch=master)](https://travis-ci.org/zhongl/passport)
 [![GitHub release](https://img.shields.io/github/release/zhongl/passport.svg)](https://hub.docker.com/r/zhongl/passport)
-[![Coverage Status](https://coveralls.io/repos/github/zhongl/passport/badge.svg?branch=master)](https://coveralls.io/github/zhongl/passport?branch=master)
+[![Coveralls github](https://img.shields.io/coveralls/github/zhongl/passport.svg)](https://coveralls.io/github/zhongl/passport?branch=master)
 
 
 Passport 是一个超轻量级统一认证网关, 面向使用 [钉钉](https://www.dingtalk.com) 或是 [企业微信](https://work.weixin.qq.com/) 的创业团队提供手机扫码登录访问内部服务.
