@@ -1,15 +1,12 @@
 package zhongl.passport
 
 import akka.actor.ActorSystem
+import akka.stream._
 import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Sink, Source}
-import akka.stream.{ActorMaterializer, FlowShape}
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
+import akka.testkit.TestKit
+import org.scalatest._
 
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-
-class EitherForkSpec extends WordSpec with BeforeAndAfterAll with Matchers {
-  implicit val system = ActorSystem(getClass.getSimpleName)
+class EitherForkSpec extends TestKit(ActorSystem("either")) with AsyncWordSpecLike with BeforeAndAfterAll with Matchers {
   implicit val mat    = ActorMaterializer()
 
   "EitherFork" should {
@@ -30,10 +27,9 @@ class EitherForkSpec extends WordSpec with BeforeAndAfterAll with Matchers {
         new FlowShape(fork.in, merge.out)
       })
 
-      val f = Source(List[Either[Int, String]](Left(1), Right("2"))).via(flow).runWith(Sink.seq)
-      Await.result(f, Duration.Inf) shouldBe Vector("1", "2")
+      Source(List[Either[Int, String]](Left(1), Right("2"))).via(flow).runWith(Sink.seq).map(_ shouldBe Vector("1", "2"))
     }
   }
 
-  override protected def afterAll(): Unit = system.terminate()
+  override protected def afterAll(): Unit = TestKit.shutdownActorSystem(system)
 }

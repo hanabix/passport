@@ -18,20 +18,20 @@ package zhongl.passport
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.{Cookie, Location}
+import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.util.FastFuture
+import akka.testkit.TestKit
 import com.auth0.jwt.JWT
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
+import org.scalatest._
 import spray.json._
-import zhongl.passport.Platforms.{Authenticated, Builder, Extractor, Platform}
+import zhongl.passport.Platforms._
 import zhongl.stream.oauth2.{OAuth2, dingtalk, wechat}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
-class PlatformsSpec extends WordSpec with Matchers with BeforeAndAfterAll {
-  implicit val system = ActorSystem(getClass.getSimpleName)
+class PlatformsSpec extends TestKit(ActorSystem("platform")) with WordSpecLike with Matchers with BeforeAndAfterAll {
 
   private val jc = JwtCookie.apply(ConfigFactory.parseString("""
       |include "common.conf"
@@ -117,5 +117,5 @@ class PlatformsSpec extends WordSpec with Matchers with BeforeAndAfterAll {
     }
   }
 
-  override protected def afterAll(): Unit = system.terminate()
+  override protected def afterAll(): Unit = TestKit.shutdownActorSystem(system)
 }

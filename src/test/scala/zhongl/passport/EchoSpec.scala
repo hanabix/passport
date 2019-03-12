@@ -19,33 +19,30 @@ package zhongl.passport
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentType.WithMissingCharset
 import akka.http.scaladsl.model.HttpEntity.Strict
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Host
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, MediaTypes}
 import akka.http.scaladsl.server.Directives
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
+import akka.testkit.TestKit
 import akka.util.ByteString
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
+import org.scalatest._
 
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-
-class EchoSpec extends WordSpec with Matchers with BeforeAndAfterAll with Directives {
-  implicit val system = ActorSystem(getClass.getSimpleName)
-  implicit val mat    = ActorMaterializer()
+class EchoSpec extends TestKit(ActorSystem("echo")) with AsyncWordSpecLike with Matchers with BeforeAndAfterAll with Directives {
+  implicit val mat = ActorMaterializer()
 
   "Echo" should {
     "handle" in {
-      val future = Source
+      Source
         .single(HttpRequest(uri = "http://foo.bar", headers = List(Host("foo.bar"))))
         .via(Echo())
         .runWith(Sink.head)
-      Await.result(future, Duration.Inf) match {
-        case HttpResponse(_, _, Strict(WithMissingCharset(MediaTypes.`text/plain`), bs), _) =>
-          bs.decodeString(ByteString.UTF_8) shouldBe "GET http://foo.bar HTTP/1.1\r\nHost: foo.bar\r\nUser-Agent: akka-http/10.1.6\r\n\r\n"
-      }
+        .map {
+          case HttpResponse(_, _, Strict(WithMissingCharset(MediaTypes.`text/plain`), bs), _) =>
+            bs.decodeString(ByteString.UTF_8) shouldBe "GET http://foo.bar HTTP/1.1\r\nHost: foo.bar\r\nUser-Agent: akka-http/10.1.6\r\n\r\n"
+        }
     }
   }
 
-  override protected def afterAll(): Unit = system.terminate()
+  override protected def afterAll(): Unit = TestKit.shutdownActorSystem(system)
 }

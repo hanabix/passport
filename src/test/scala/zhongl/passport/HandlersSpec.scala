@@ -17,25 +17,24 @@
 package zhongl.passport
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
+import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
+import akka.testkit.TestKit
+import org.scalatest._
 
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-
-class HandlersSpec extends WordSpec with Matchers with BeforeAndAfterAll {
-  implicit val system = ActorSystem(getClass.getSimpleName)
-  implicit val mat    = ActorMaterializer()
+class HandlersSpec extends TestKit(ActorSystem("handlers")) with AsyncWordSpecLike with Matchers with BeforeAndAfterAll {
+  implicit val mat = ActorMaterializer()
 
   "Handlers" should {
     "create a flow with guard" in {
-      val flow   = Handle(Source.repeat(List.empty))
-      val future = Source.single(HttpRequest()).via(flow).runWith(Sink.head)
-      Await.result(future, Duration.Inf) shouldBe HttpResponse(StatusCodes.Unauthorized)
+      Source
+        .single(HttpRequest())
+        .via(Handle(Source.repeat(List.empty)))
+        .runWith(Sink.head)
+        .map(_ shouldBe HttpResponse(StatusCodes.Unauthorized))
     }
   }
 
-  override protected def afterAll(): Unit = system.terminate()
+  override protected def afterAll(): Unit = TestKit.shutdownActorSystem(system)
 }
