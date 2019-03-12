@@ -27,13 +27,15 @@ import akka.http.scaladsl.model.HttpEntity.{ChunkStreamPart, Chunked}
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Host
-import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
-import akka.stream.alpakka.unixdomainsocket.scaladsl.UnixDomainSocket
+import akka.http.scaladsl.unmarshalling._
 import akka.stream.scaladsl._
-import akka.stream.{ActorMaterializer, Attributes, FlowShape, Graph}
+import akka.stream._
 import akka.util.ByteString
+import io.netty.channel.unix._
 import spray.json._
-import zhongl.passport.Docker.{Container, Service}
+import zhongl.passport.Docker._
+import zhongl.stream.netty._
+import all._
 
 import scala.concurrent.Future
 import scala.util.matching.Regex
@@ -95,8 +97,9 @@ object Docker {
       case Uri("unix", _, Path(p), _, _) =>
         val file = new File(p)
         val bidi = Http().clientLayer(Host("localhost")).atop(TLSPlacebo())
+        val address = new DomainSocketAddress(file)
         // TODO the same outgoing connection (flow) could cause materialization twice.
-        new Docker(Uri("http://localhost"), () => { bidi.join(UnixDomainSocket().outgoingConnection(file)) })
+        new Docker(Uri("http://localhost"), () => { bidi.join(Netty().outgoingConnection[DomainSocketChannel](address)) })
       case u =>
         val forward = Forward().mapAsync(1)(identity)
         new Docker(u.copy(scheme = "http"), () => forward)
