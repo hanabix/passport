@@ -1,0 +1,23 @@
+@startuml
+actor User
+participant Passport
+participant Service as S
+participant WeChatWork
+
+User -> Passport:  GET http://bops.btb-inc.com
+Passport --> User: 302 redirect to authorize
+User -> WeChatWork: scan qrcode
+WeChatWork --> User: 302 redirect to http://passport.btb-inc.com/authorized?code=xxx
+User -> Passport:  GET http://passport.btb-inc.com/authorized?code=xxx
+Passport -> WeChatWork: /user/getuserinfo?code=xxx&access_token=xxx
+WeChatWork --> Passport: 200 {"UserID": "someid"}
+Passport -> WeChatWork: /user/get?userid=someid&access_token=xxx
+WeChatWork --> Passport: 200 {...}
+Passport --> User: 200 with Set-Cookie: jwt=xxxx; domain=.btb-inc.com
+User -> Passport:  GET http://bops.btb-inc.com <cookie>
+Passport -> S: GET /
+S --> Passport: 200
+Passport --> User: 200
+@enduml
+
+
