@@ -2,7 +2,7 @@
 actor User <<browser>>
 control Passport <<gateway>>
 cloud protected {
-  node BOPS
+  node Service
 }
 
 User -> Passport: HTTP with JWT cookie
