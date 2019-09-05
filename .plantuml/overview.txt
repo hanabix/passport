@@ -1,0 +1,10 @@
+@startuml
+actor User <<browser>>
+control Passport <<gateway>>
+cloud protected {
+  node BOPS
+}
+
+User -> Passport: HTTP with JWT cookie
+Passport -> Service: rewrite and forward request
+@enduml
