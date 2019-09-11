@@ -9,7 +9,7 @@ Passport 是一个超轻量级统一认证网关, 面向使用 [钉钉](https://
 ![overview diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/zhongl/passport/master/.plantuml/deploy.txt)
 
 
-![seq diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/zhongl/passport/master/.plantuml/interaction.txt)
+![seq diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/zhongl/passport/master/.plantuml/seq.txt)
 
 
 ## 跑起来
