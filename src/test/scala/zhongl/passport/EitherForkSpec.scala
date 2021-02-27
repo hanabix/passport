@@ -7,7 +7,7 @@ import akka.testkit.TestKit
 import org.scalatest._
 
 class EitherForkSpec extends TestKit(ActorSystem("either")) with AsyncWordSpecLike with BeforeAndAfterAll with Matchers {
-  implicit val mat = ActorMaterializer()
+  private implicit val mat = Materializer(system)
 
   "EitherFork" should {
     "fork" in {
