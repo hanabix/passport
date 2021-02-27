@@ -31,7 +31,7 @@ lazy val root = (project in file("."))
       "com.typesafe.akka"                    %% "akka-testkit"        % akkaVersion % Test,
       "com.typesafe.akka"                    %% "akka-stream-testkit" % akkaVersion % Test,
       "org.scalatest"                        %% "scalatest"           % "3.0.4" % Test,
-      "org.scalamock"                        %% "scalamock"           % "4.1.0" % Test
+      "org.scalamock"                        %% "scalamock"           % "4.4.0" % Test
     )
   )
   .enablePlugins(JavaAppPackaging, AshScriptPlugin, DockerSpotifyClientPlugin)
