@@ -34,6 +34,8 @@ import zhongl.stream.netty.all._
 import java.nio.file.Files
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AsyncWordSpecLike
 
 class DockerSpec
     extends TestKit(ActorSystem("docker"))
