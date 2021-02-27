@@ -21,7 +21,6 @@ lazy val root = (project in file("."))
     dockerUsername := Some("zhongl"),
     dockerUpdateLatest := true,
     dockerRepository := sys.props.get("docker.repository"),
-    version in Docker := sys.props.get("docker.tag").getOrElse(version.value),
     libraryDependencies ++= Seq(
       "com.github.zhongl" %% "akka-stream-netty-all"       % "0.1.6",
       "com.github.scopt"  %% "scopt"                       % "4.0.0",
