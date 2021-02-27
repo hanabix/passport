@@ -31,4 +31,4 @@ lazy val root = (project in file("."))
       "org.scalamock"     %% "scalamock"                   % "5.1.0"         % Test
     )
   )
-  .enablePlugins(JavaAppPackaging, AshScriptPlugin, DockerSpotifyClientPlugin)
+  .enablePlugins(JavaAppPackaging, AshScriptPlugin)
