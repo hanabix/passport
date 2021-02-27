@@ -2,12 +2,13 @@ lazy val akkaHttpVersion = "10.2.4"
 lazy val akkaVersion     = "2.6.13"
 lazy val oauth2Version   = "0.1.10"
 
+ThisBuild / dynverVTagPrefix := false
+
 lazy val root = (project in file("."))
   .settings(
     organization := "fun.zhongl",
     scalaVersion := "2.13.4",
     name := "passport",
-    version := "0.0.1",
     scalafmtOnCompile := true,
     scalacOptions += "-deprecation",
     mainClass in Compile := Some("zhongl.passport.Main"),
