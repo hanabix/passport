@@ -16,23 +16,22 @@
 
 package zhongl.passport
 
-import java.nio.file.Files
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpEntity.Chunked
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Host
 import akka.http.scaladsl.server._
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source, TLSPlacebo}
 import akka.testkit.TestKit
 import akka.util.ByteString
 import io.netty.channel.unix._
 import org.scalatest._
 import zhongl.stream.netty._
-import all._
+import zhongl.stream.netty.all._
 
+import java.nio.file.Files
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
@@ -44,8 +43,8 @@ class DockerSpec
     with Directives
     with Docker.JsonSupport {
 
-  private implicit val mat = ActorMaterializer()
-  private implicit val ex  = system.dispatcher
+  implicit private val mat = Materializer(system)
+  implicit private val ex  = system.dispatcher
 
   private val file = {
     val f = Files.createTempFile("passport", "sock").toFile
@@ -56,7 +55,7 @@ class DockerSpec
 
   private val bound = {
     val flow = mockDockerDaemon.join(Http().serverLayer()).join(TLSPlacebo())
-    Await.result(Netty().bindAndHandle[DomainSocketChannel](flow, new DomainSocketAddress(file)), Duration.Inf)
+    Await.result(Netty().bindAndHandle[ServerDomainSocketChannel](flow, new DomainSocketAddress(file)), Duration.Inf)
   }
 
   private val docker = Docker(Uri(file.toURI.toString).withScheme("unix").toString())
@@ -65,23 +64,22 @@ class DockerSpec
     "run local mode" in {
       "docker" match {
         case Docker.Mode(local) =>
-          local(docker).runWith(Sink.head).map {
-            case List((r, Host(h, 8080))) =>
-              r.regex shouldBe ".+"
-              h.address() shouldBe "demo"
+          local(docker).runWith(Sink.head).map { case List((r, Host(h, 8080))) =>
+            r.regex shouldBe ".+"
+            h.address() shouldBe "demo"
           }
-
+        case _ => fail()
       }
     }
 
     "run swarm mode" in {
       "swarm" match {
         case Docker.Mode(swarm) =>
-          swarm(docker).runWith(Sink.head).map {
-            case List((r, Host(h, 0))) =>
-              r.regex shouldBe ".+"
-              h.address() shouldBe "demo"
+          swarm(docker).runWith(Sink.head).map { case List((r, Host(h, 0))) =>
+            r.regex shouldBe ".+"
+            h.address() shouldBe "demo"
           }
+        case _ => fail()
       }
     }
 

@@ -18,13 +18,13 @@ package zhongl.passport
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model._
-import akka.stream.ActorMaterializer
+import akka.stream.{ActorMaterializer, Materializer}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.testkit.TestKit
 import org.scalatest._
 
 class HandlersSpec extends TestKit(ActorSystem("handlers")) with AsyncWordSpecLike with Matchers with BeforeAndAfterAll {
-  implicit val mat = ActorMaterializer()
+  implicit private val mat = Materializer(system)
 
   "Handlers" should {
     "create a flow with guard" in {

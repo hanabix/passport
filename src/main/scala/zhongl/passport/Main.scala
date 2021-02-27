@@ -21,12 +21,12 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Flow
+import akka.stream._
 import zhongl.passport.CommandLine._
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent._
 import scala.util.Try
 
 object Main extends Directives {
@@ -35,34 +35,34 @@ object Main extends Directives {
     implicit val system = ActorSystem("passport")
 
     run(parser.parse(args, Opt()))
-      .recover {
-        case t: Throwable =>
-          system.log.error(t, "Unexpected")
-          system.terminate()
+      .recover { case t: Throwable =>
+        system.log.error(t, "Unexpected")
+        system.terminate()
       }
       .foreach(Await.ready(_, Duration.Inf))
   }
 
   private def run(maybeOpt: Option[Opt])(implicit system: ActorSystem): Try[Future[Terminated]] = Try {
-    implicit val mat = ActorMaterializer()
+    implicit val mat = Materializer(system)
 
     maybeOpt map {
       case Opt(host, port, true, _) =>
         (host, port, Echo())
-      case Opt(host, port, _, d) =>
+      case Opt(host, port, _, d)    =>
         (host, port, Handle(d(Docker())))
-    } map {
-      case (host, port, flow) => bind(flow, host, port)
+    } map { case (host, port, flow) =>
+      bind(flow, host, port)
     } getOrElse system.terminate()
 
   }
 
   private def bind(flow: Flow[HttpRequest, HttpResponse, Any], host: String, port: Int)(implicit system: ActorSystem) = {
-    implicit val mat = ActorMaterializer()
+    implicit val mat = Materializer(system)
     implicit val ex  = system.dispatcher
 
     Http()
-      .bindAndHandle(flow, host, port)
+      .newServerAt(host, port)
+      .bindFlow(flow)
       .flatMap { bound =>
         system.log.info("Server online at {}", bound.localAddress)
 
@@ -77,10 +77,9 @@ object Main extends Directives {
       }
       .flatMap(_.terminate(3.seconds))
       .flatMap(_ => system.terminate())
-      .recoverWith {
-        case cause: Throwable =>
-          system.log.error(cause, "Force to terminate")
-          system.terminate()
+      .recoverWith { case cause: Throwable =>
+        system.log.error(cause, "Force to terminate")
+        system.terminate()
       }
   }
 

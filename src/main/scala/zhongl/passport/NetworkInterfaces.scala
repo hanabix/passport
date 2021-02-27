@@ -20,7 +20,7 @@ import java.net.{Inet4Address, InetAddress, NetworkInterface}
 
 import akka.http.scaladsl.model.RemoteAddress
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object NetworkInterfaces {
   implicit val string2RemoteAddress: String => RemoteAddress = s => RemoteAddress(InetAddress.getByName(s))

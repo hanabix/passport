@@ -19,8 +19,8 @@ class RewriteRequestActorSpec
     with ImplicitSender
     with BeforeAndAfterAll {
 
-  private implicit val mat     = ActorMaterializer()
-  private implicit val timeout = Timeout(3.seconds)
+  implicit private val mat     = ActorMaterializer()
+  implicit private val timeout = Timeout(3.seconds)
 
   "RewriteRequestActor" should {
 

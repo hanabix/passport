@@ -30,14 +30,14 @@ object Rewrite {
   type Request       = Rewrite[HttpRequest, HttpResponse]
   type Headers       = Rewrite[Seq[HttpHeader], HttpResponse]
 
-  implicit def asRequest(f: Headers): Request = r => f(r.headers).right.map(r.withHeaders)
+  implicit def asRequest(f: Headers): Request = r => f(r.headers).map(r.withHeaders)
 
   implicit final class RequestOps(val f: Request) extends AnyVal {
-    def &(g: Request): Request = r => f(r).right.flatMap(g)
+    def &(g: Request): Request = r => f(r).flatMap(g)
   }
 
   implicit final class HeadersOps(val f: Headers) extends AnyVal {
-    def &(g: Request): Request = r => f(r).right.flatMap(g)
+    def &(g: Request): Request = r => f(r).flatMap(g)
   }
 
   object XForwardedFor {
@@ -70,8 +70,8 @@ object Rewrite {
         }
     }
 
-    private final case class Aggregated(origin: Option[`X-Forwarded-For`] = None, remote: Option[RemoteAddress] = None)
-    private final case class LoopDetectedException(addressed: Seq[RemoteAddress]) extends ControlThrowable
+    final private case class Aggregated(origin: Option[`X-Forwarded-For`] = None, remote: Option[RemoteAddress] = None)
+    final private case class LoopDetectedException(addressed: Seq[RemoteAddress]) extends ControlThrowable
   }
 
   object IgnoreHeader {

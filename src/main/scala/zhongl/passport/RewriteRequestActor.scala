@@ -16,10 +16,10 @@
 
 package zhongl.passport
 
-import akka.actor.Status.{Failure, Success}
+import akka.actor.Status._
 import akka.actor.{Actor, ActorLogging, Props, Stash}
 import akka.http.scaladsl.model.HttpRequest
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source}
 import zhongl.passport.Rewrite._
 
@@ -30,13 +30,13 @@ final class RewriteRequestActor private (source: Source[Docker.Mode.Rules, Any],
 
   import RewriteRequestActor._
 
-  private implicit val mat = ActorMaterializer()(context)
+  implicit private val mat = Materializer(context)
 
   source
     .map(locate)
     .map(g => mayBeRequest.map(_ & g).getOrElse(g))
     .map(Locate)
-    .runWith(Sink.actorRef(self, Complete))
+    .runWith(Sink.actorRef(self, Complete, Failure))
 
   override def receive: Receive = {
     case Failure(cause) => unstashAll(); context.become(dying(cause))
@@ -45,11 +45,10 @@ final class RewriteRequestActor private (source: Source[Docker.Mode.Rules, Any],
     case _              => stash()
   }
 
-  private def dying(cause: Throwable): Receive = {
-    case _: HttpRequest =>
-      sender() ! Failure(cause)
-      log.error(cause, "Stop actor cause by source failure")
-      context.stop(self)
+  private def dying(cause: Throwable): Receive = { case _: HttpRequest =>
+    sender() ! Failure(cause)
+    log.error(cause, "Stop actor cause by source failure")
+    context.stop(self)
   }
 
   private def rewrite(f: Request): Receive = {
@@ -71,7 +70,7 @@ object RewriteRequestActor {
     Rewrite.HostOfUri(h => rules.find(p => p._1.pattern.matcher(h.host.address()).matches()).map(p => p._2))
   }
 
-  private sealed trait Message
-  private final case class Locate(g: Rewrite.Request) extends Message
+  sealed private trait Message
+  final private case class Locate(g: Rewrite.Request) extends Message
   private case object Complete                        extends Message
 }
