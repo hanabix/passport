@@ -8,4 +8,4 @@ addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.5.1")
 
 addSbtPlugin("org.scoverage" % "sbt-coveralls" % "1.2.5")
 
-libraryDependencies += "com.spotify" % "docker-client" % "8.9.0"
+libraryDependencies += "com.spotify" % "docker-client" % "8.9.2"
