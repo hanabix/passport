@@ -23,11 +23,12 @@ import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.{HttpHeader, HttpRequest, HttpResponse, RemoteAddress}
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec}
 import zhongl.passport.NetworkInterfaces._
 import zhongl.passport.Rewrite._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class RewriteSpec extends WordSpec with Matchers with MockFactory {
+class RewriteSpec extends AnyWordSpec with Matchers with MockFactory {
 
   private val local = RemoteAddress(InetAddress.getLoopbackAddress)
 

@@ -27,6 +27,8 @@ import akka.stream.scaladsl.{Sink, Source}
 import akka.testkit.TestKit
 import akka.util.ByteString
 import org.scalatest._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AsyncWordSpecLike
 
 class EchoSpec extends TestKit(ActorSystem("echo")) with AsyncWordSpecLike with Matchers with BeforeAndAfterAll with Directives {
   implicit val mat = Materializer(system)

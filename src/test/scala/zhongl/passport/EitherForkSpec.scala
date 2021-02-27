@@ -5,9 +5,11 @@ import akka.stream._
 import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Sink, Source}
 import akka.testkit.TestKit
 import org.scalatest._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AsyncWordSpecLike
 
 class EitherForkSpec extends TestKit(ActorSystem("either")) with AsyncWordSpecLike with BeforeAndAfterAll with Matchers {
-  private implicit val mat = Materializer(system)
+  implicit private val mat = Materializer(system)
 
   "EitherFork" should {
     "fork" in {

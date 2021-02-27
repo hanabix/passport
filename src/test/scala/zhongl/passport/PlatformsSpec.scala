@@ -30,8 +30,10 @@ import zhongl.stream.oauth2.{dingtalk, wechat, OAuth2}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
-class PlatformsSpec extends TestKit(ActorSystem("platform")) with WordSpecLike with Matchers with BeforeAndAfterAll {
+class PlatformsSpec extends TestKit(ActorSystem("platform")) with AnyWordSpecLike with Matchers with BeforeAndAfterAll {
 
   private val jc = JwtCookie.apply(ConfigFactory.parseString("""
                                                                |include "common.conf"
