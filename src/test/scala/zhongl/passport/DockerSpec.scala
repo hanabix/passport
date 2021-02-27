@@ -64,22 +64,24 @@ class DockerSpec
     "run local mode" in {
       "docker" match {
         case Docker.Mode(local) =>
-          local(docker).runWith(Sink.head).map { case List((r, Host(h, 8080))) =>
-            r.regex shouldBe ".+"
-            h.address() shouldBe "demo"
+          local(docker).runWith(Sink.head).map {
+            case List((r, Host(h, 8080))) =>
+              r.regex shouldBe ".+"
+              h.address() shouldBe "demo"
+            case _                        => fail()
           }
-        case _ => fail()
       }
     }
 
     "run swarm mode" in {
       "swarm" match {
         case Docker.Mode(swarm) =>
-          swarm(docker).runWith(Sink.head).map { case List((r, Host(h, 0))) =>
-            r.regex shouldBe ".+"
-            h.address() shouldBe "demo"
+          swarm(docker).runWith(Sink.head).map {
+            case List((r, Host(h, 0))) =>
+              r.regex shouldBe ".+"
+              h.address() shouldBe "demo"
+            case _                     => fail()
           }
-        case _ => fail()
       }
     }
 
