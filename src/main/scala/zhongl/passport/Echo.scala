@@ -19,7 +19,7 @@ package zhongl.passport
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.headers.{Host, `Timeout-Access`}
+import akka.http.scaladsl.model.headers.{`Timeout-Access`, Host}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl.{Flow, TLSPlacebo}
 import akka.util.ByteString
@@ -33,7 +33,7 @@ object Echo extends {
     }
     Flow[HttpRequest]
       .map(IgnoreHeader(_.isInstanceOf[`Timeout-Access`]))
-      .map(_.right.get)
+      .map(_.toOption.get)
       .via(Http().clientLayer(Host("echo")).atop(TLSPlacebo()).join(echo))
   }
 

@@ -26,7 +26,7 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import spray.json._
 import zhongl.passport.Platforms._
-import zhongl.stream.oauth2.{OAuth2, dingtalk, wechat}
+import zhongl.stream.oauth2.{dingtalk, wechat, OAuth2}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -34,11 +34,11 @@ import scala.concurrent.duration.Duration
 class PlatformsSpec extends TestKit(ActorSystem("platform")) with WordSpecLike with Matchers with BeforeAndAfterAll {
 
   private val jc = JwtCookie.apply(ConfigFactory.parseString("""
-      |include "common.conf"
-      |cookie {
-      | domain = ".a.b"
-      | secret = "***"
-      |}
+                                                               |include "common.conf"
+                                                               |cookie {
+                                                               | domain = ".a.b"
+                                                               | secret = "***"
+                                                               |}
     """.stripMargin))
 
   "Platforms" should {
@@ -55,11 +55,13 @@ class PlatformsSpec extends TestKit(ActorSystem("platform")) with WordSpecLike w
     }
 
     "complain no platform has bound" in {
-      intercept[IllegalStateException](Platforms.bound(ConfigFactory.empty())).getMessage shouldBe "Either [dingtalk] or [wechat] should be configured."
+      intercept[IllegalStateException](
+        Platforms.bound(ConfigFactory.empty())
+      ).getMessage shouldBe "Either [dingtalk] or [wechat] should be configured."
     }
 
     "have ding" in {
-      val jsonSupport = new dingtalk.JsonSupport {}
+      val jsonSupport     = new dingtalk.JsonSupport {}
       import jsonSupport._
       val info            = dingtalk.UserInfo("1", "n", "e", Seq(1), "a", true, Seq.empty)
       val signature       = Platforms.ding.builder(info).sign(jc.algorithm)
@@ -68,7 +70,7 @@ class PlatformsSpec extends TestKit(ActorSystem("platform")) with WordSpecLike w
     }
 
     "have wework" in {
-      val jsonSupport = new wechat.JsonSupport {}
+      val jsonSupport     = new wechat.JsonSupport {}
       import jsonSupport._
       val info            = wechat.UserInfo("1", "n", Seq(1), "e", "a", 0, 0, 0, "")
       val signature       = Platforms.wework.builder(info).sign(jc.algorithm)
@@ -79,7 +81,7 @@ class PlatformsSpec extends TestKit(ActorSystem("platform")) with WordSpecLike w
     "return auto redirect html" in {
       val builder: Builder[String] = s => JWT.create().withSubject(s)
       val extractor: Extractor     = j => j.getSubject
-      val p = new Platform[String, dingtalk.AccessToken](builder, extractor) {
+      val p                        = new Platform[String, dingtalk.AccessToken](builder, extractor) {
         override protected def concrete(authenticated: Authenticated[String])(implicit system: ActorSystem) =
           new OAuth2[dingtalk.AccessToken] {
             override def refresh = {

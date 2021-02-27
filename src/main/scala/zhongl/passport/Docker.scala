@@ -42,7 +42,7 @@ import scala.util.matching.Regex
 
 class Docker(base: Uri, outgoing: () => Graph[FlowShape[HttpRequest, HttpResponse], Any])(implicit system: ActorSystem) extends Docker.JsonSupport {
 
-  private implicit val mat = ActorMaterializer()
+  implicit private val mat = Materializer(system)
 
   def events(filters: Map[String, List[String]]): Source[ByteString, Any] = {
     val query   = Uri.Query("filters" -> filters.toJson.compactPrint)
@@ -73,8 +73,8 @@ class Docker(base: Uri, outgoing: () => Graph[FlowShape[HttpRequest, HttpRespons
     val query   = Uri.Query("filters" -> filters.toJson.compactPrint)
     val request = HttpRequest(uri = base.copy(path = path).withQuery(query))
 
-    @inline def unmarshal: HttpResponse => Future[T] = {
-      case HttpResponse(StatusCodes.OK, _, entity, _) => Unmarshal(entity).to[T]
+    @inline def unmarshal: HttpResponse => Future[T] = { case HttpResponse(StatusCodes.OK, _, entity, _) =>
+      Unmarshal(entity).to[T]
     }
 
     Flow[Any]
@@ -88,19 +88,18 @@ class Docker(base: Uri, outgoing: () => Graph[FlowShape[HttpRequest, HttpRespons
 }
 
 /**
-  *
   */
 object Docker {
 
   def apply(host: String = fromEnv)(implicit system: ActorSystem): Docker = {
     Uri(host) match {
       case Uri("unix", _, Path(p), _, _) =>
-        val file = new File(p)
-        val bidi = Http().clientLayer(Host("localhost")).atop(TLSPlacebo())
+        val file    = new File(p)
+        val bidi    = Http().clientLayer(Host("localhost")).atop(TLSPlacebo())
         val address = new DomainSocketAddress(file)
         // TODO the same outgoing connection (flow) could cause materialization twice.
         new Docker(Uri("http://localhost"), () => { bidi.join(Netty().outgoingConnection[DomainSocketChannel](address)) })
-      case u =>
+      case u                             =>
         val forward = Forward().mapAsync(1)(identity)
         new Docker(u.copy(scheme = "http"), () => forward)
     }
@@ -140,7 +139,7 @@ object Docker {
     case object Local extends Value {
       override def apply(docker: Docker): Source[Rules, NotUsed] = {
         val filters = Map("scope" -> List("local"), "type" -> List("container"), "event" -> List("start", "destroy"))
-        val update = docker
+        val update  = docker
           .containers(_: Filters)
           .map(_.map(c => c.`Labels`(rule).r -> Host(c.`Names`.head.substring(1), port(c.`Labels`))))
         source(docker.events(filters), update)
@@ -150,7 +149,7 @@ object Docker {
     case object Swarm extends Value {
       override def apply(docker: Docker): Source[Rules, NotUsed] = {
         val filters = Map("scope" -> List("swarm"), "type" -> List("service"), "event" -> List("update", "remove"))
-        val update = docker
+        val update  = docker
           .services(_: Filters)
           .map(_.map(c => c.`Spec`.`Labels`(rule).r -> Host(c.`Spec`.`Name`, port(c.`Spec`.`Labels`))))
         source(docker.events(filters), update)

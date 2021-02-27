@@ -25,8 +25,8 @@ object EitherFork {
       import GraphDSL.Implicits._
 
       val partition = b.add(Partition[Either[A, B]](2, t => if (t.isLeft) 0 else 1))
-      val left      = b.add(Flow[Either[A, B]].map(_.left.get))
-      val right     = b.add(Flow[Either[A, B]].map(_.right.get))
+      val left      = b.add(Flow[Either[A, B]].map(_.swap.toOption.get))
+      val right     = b.add(Flow[Either[A, B]].map(_.toOption.get))
 
       // format: OFF
       partition.out(0) ~> left

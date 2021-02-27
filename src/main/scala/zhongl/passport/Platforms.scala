@@ -19,13 +19,13 @@ package zhongl.passport
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes.`text/html(UTF-8)`
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.{HttpCookie, `Set-Cookie`}
+import akka.http.scaladsl.model.headers.{`Set-Cookie`, HttpCookie}
 import com.auth0.jwt.interfaces.DecodedJWT
 import com.auth0.jwt.{JWT, JWTCreator}
 import com.typesafe.config.Config
 import spray.json._
 import zhongl.stream.oauth2.FreshToken.Token
-import zhongl.stream.oauth2.{OAuth2, dingtalk, wechat}
+import zhongl.stream.oauth2.{dingtalk, wechat, OAuth2}
 
 object Platforms {
 
@@ -133,7 +133,7 @@ object Platforms {
   }
 
   def bound(config: Config): Platform[_, _ <: Token] = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
 
     config
       .root()

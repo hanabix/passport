@@ -19,7 +19,7 @@ package zhongl.passport
 import org.scalatest.{Matchers, WordSpec}
 
 class CommandLineSpec extends WordSpec with Matchers {
-  val default = CommandLine.Opt()
+  private val default = CommandLine.Opt()
 
   "CommandLine" should {
     "parse opt" in {

@@ -3,7 +3,7 @@ package zhongl.passport
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Host
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import akka.util.Timeout
@@ -19,8 +19,8 @@ class RewriteRequestActorSpec
     with ImplicitSender
     with BeforeAndAfterAll {
 
-  private implicit val mat     = ActorMaterializer()
-  private implicit val timeout = Timeout(3.seconds)
+  implicit private val mat     = Materializer(system)
+  implicit private val timeout = Timeout(3.seconds)
 
   "RewriteRequestActor" should {
 

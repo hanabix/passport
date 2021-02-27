@@ -54,8 +54,8 @@ object Handle {
       FlowShape(guard.in, merge.out)
     }
 
-    Flow[HttpRequest].via(graph).mapAsync(1)(identity).recover {
-      case NonFatal(cause) => HttpResponse(StatusCodes.InternalServerError, entity = cause.toString)
+    Flow[HttpRequest].via(graph).mapAsync(1)(identity).recover { case NonFatal(cause) =>
+      HttpResponse(StatusCodes.InternalServerError, entity = cause.toString)
     }
   }
 
