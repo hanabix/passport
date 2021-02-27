@@ -22,6 +22,8 @@ import akka.stream.{ActorMaterializer, Materializer}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.testkit.TestKit
 import org.scalatest._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AsyncWordSpecLike
 
 class HandlersSpec extends TestKit(ActorSystem("handlers")) with AsyncWordSpecLike with Matchers with BeforeAndAfterAll {
   implicit private val mat = Materializer(system)

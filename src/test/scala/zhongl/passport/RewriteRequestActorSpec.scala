@@ -11,6 +11,8 @@ import org.scalatest._
 
 import scala.concurrent.duration._
 import scala.util.control._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AsyncWordSpecLike
 
 class RewriteRequestActorSpec
     extends TestKit(ActorSystem("RewriteRequest"))

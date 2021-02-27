@@ -16,9 +16,10 @@
 
 package zhongl.passport
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class CommandLineSpec extends WordSpec with Matchers {
+class CommandLineSpec extends AnyWordSpec with Matchers {
   private val default = CommandLine.Opt()
 
   "CommandLine" should {
