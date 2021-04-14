@@ -1,6 +1,6 @@
 lazy val akkaHttpVersion = "10.2.4"
 lazy val akkaVersion     = "2.6.13"
-lazy val oauth2Version   = "0.1.11"
+lazy val oauth2Version   = "0.1.12"
 
 ThisBuild / dynverVTagPrefix := false
 
