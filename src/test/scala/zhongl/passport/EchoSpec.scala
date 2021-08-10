@@ -31,7 +31,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpecLike
 
 class EchoSpec extends TestKit(ActorSystem("echo")) with AsyncWordSpecLike with Matchers with BeforeAndAfterAll with Directives {
-  implicit val mat = Materializer(system)
+  implicit val mat    = Materializer(system)
+  private val version = classOf[HttpRequest].getPackage.getImplementationVersion
 
   "Echo" should {
     "handle" in {
@@ -40,7 +41,7 @@ class EchoSpec extends TestKit(ActorSystem("echo")) with AsyncWordSpecLike with 
         .via(Echo())
         .runWith(Sink.head)
         .map { case HttpResponse(_, _, Strict(WithMissingCharset(MediaTypes.`text/plain`), bs), _) =>
-          bs.decodeString(ByteString.UTF_8) shouldBe "GET http://foo.bar HTTP/1.1\r\nHost: foo.bar\r\nUser-Agent: akka-http/10.2.4\r\n\r\n"
+          bs.decodeString(ByteString.UTF_8) shouldBe s"GET http://foo.bar HTTP/1.1\r\nHost: foo.bar\r\nUser-Agent: akka-http/${version}\r\n\r\n"
         }
     }
   }
