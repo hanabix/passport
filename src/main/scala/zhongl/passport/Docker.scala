@@ -65,7 +65,7 @@ class Docker(base: Uri, outgoing: () => Graph[FlowShape[HttpRequest, HttpRespons
     list[List[Container]](filters, Path / "containers" / "json")
   }
 
-  def services(filters: Map[String, List[String]]): Flow[Any, List[Service], NotUsed] = {
+  def services(filters: Map[String, List[String]]): Flow[Any, List[Service], NotUsed]                              = {
     list[List[Service]](filters, Path / "services")
   }
 
@@ -87,8 +87,7 @@ class Docker(base: Uri, outgoing: () => Graph[FlowShape[HttpRequest, HttpRespons
   }
 }
 
-/**
-  */
+/** */
 object Docker {
 
   def apply(host: String = fromEnv)(implicit system: ActorSystem): Docker = {
@@ -105,7 +104,7 @@ object Docker {
     }
   }
 
-  private def fromEnv = {
+  private def fromEnv                                                     = {
     sys.env.getOrElse("DOCKER_HOST", "unix:///var/run/docker.dock")
   }
 

@@ -31,7 +31,7 @@ import scala.util.Try
 
 object Main extends Directives {
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit                                                                                 = {
     implicit val system = ActorSystem("passport")
 
     run(parser.parse(args, Opt()))
@@ -42,7 +42,7 @@ object Main extends Directives {
       .foreach(Await.ready(_, Duration.Inf))
   }
 
-  private def run(maybeOpt: Option[Opt])(implicit system: ActorSystem): Try[Future[Terminated]] = Try {
+  private def run(maybeOpt: Option[Opt])(implicit system: ActorSystem): Try[Future[Terminated]]                       = Try {
     implicit val mat = Materializer(system)
 
     maybeOpt map {

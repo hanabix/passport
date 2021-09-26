@@ -59,7 +59,7 @@ object Handle {
     }
   }
 
-  private def guardShape()(implicit system: ActorSystem) = {
+  private def guardShape()(implicit system: ActorSystem)                                                                     = {
     val config = system.settings.config
     val jc     = JwtCookie.apply(config)
     val ignore = jc.unapply(_: HttpRequest).isDefined
@@ -68,7 +68,7 @@ object Handle {
     Guard.graph(plugin.oauth2(jc.generate), ignore)(system.dispatcher)
   }
 
-  private def rewriteShape(dynamic: Source[Docker.Mode.Rules, Any])(implicit system: ActorSystem) = {
+  private def rewriteShape(dynamic: Source[Docker.Mode.Rules, Any])(implicit system: ActorSystem)                            = {
     import Rewrite._
 
     implicit val timeout = Timeout(2.seconds)

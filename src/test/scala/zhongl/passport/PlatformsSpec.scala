@@ -86,7 +86,7 @@ class PlatformsSpec extends TestKit(ActorSystem("platform")) with AnyWordSpecLik
       val p                        = new Platform[String, dingtalk.AccessToken](builder, extractor) {
         override protected def concrete(authenticated: Authenticated[String])(implicit system: ActorSystem) =
           new OAuth2[dingtalk.AccessToken] {
-            override def refresh = {
+            override def refresh                                                            = {
               FastFuture.successful(dingtalk.AccessToken("token", 7200))
             }
 
@@ -94,7 +94,7 @@ class PlatformsSpec extends TestKit(ActorSystem("platform")) with AnyWordSpecLik
               FastFuture.successful(authenticated("", Uri("http://auto.redirect")))
             }
 
-            override def authorization(state: String) = Location(Uri())
+            override def authorization(state: String)                                       = Location(Uri())
 
             override def redirect = Uri()
           }

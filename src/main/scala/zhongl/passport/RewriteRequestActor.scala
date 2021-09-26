@@ -38,7 +38,7 @@ final class RewriteRequestActor private (source: Source[Docker.Mode.Rules, Any],
     .map(Locate)
     .runWith(Sink.actorRef(self, Complete, Failure))
 
-  override def receive: Receive = {
+  override def receive: Receive                = {
     case Failure(cause) => unstashAll(); context.become(dying(cause))
     case Locate(f)      => unstashAll(); context.become(rewrite(f))
     case Complete       => context.stop(self)
@@ -51,7 +51,7 @@ final class RewriteRequestActor private (source: Source[Docker.Mode.Rules, Any],
     context.stop(self)
   }
 
-  private def rewrite(f: Request): Receive = {
+  private def rewrite(f: Request): Receive     = {
     case r: HttpRequest => sender() ! Success(f(r))
     case Locate(g)      => context.become(rewrite(g))
     case Complete       => context.stop(self)

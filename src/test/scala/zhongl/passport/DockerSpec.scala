@@ -48,14 +48,14 @@ class DockerSpec
   implicit private val mat = Materializer(system)
   implicit private val ex  = system.dispatcher
 
-  private val file = {
+  private val file   = {
     val f = Files.createTempFile("passport", "sock").toFile
     f.delete()
     f.deleteOnExit()
     f
   }
 
-  private val bound = {
+  private val bound  = {
     val flow = mockDockerDaemon.join(Http().serverLayer()).join(TLSPlacebo())
     Await.result(Netty().bindAndHandle[ServerDomainSocketChannel](flow, new DomainSocketAddress(file)), Duration.Inf)
   }
@@ -89,7 +89,7 @@ class DockerSpec
 
   }
 
-  def mockDockerDaemon: Route = get {
+  def mockDockerDaemon: Route             = get {
     concat(
       path("events") {
         complete(Chunked.fromData(ContentTypes.`application/json`, Source.repeat(ByteString("1")).delay(1.second)))
