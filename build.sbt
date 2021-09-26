@@ -7,7 +7,7 @@ ThisBuild / dynverVTagPrefix := false
 lazy val root = (project in file("."))
   .settings(
     organization := "fun.zhongl",
-    scalaVersion := "2.13.4",
+    scalaVersion := "2.13.6",
     name := "passport",
     scalafmtOnCompile := true,
     scalacOptions += "-deprecation",
