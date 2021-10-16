@@ -87,8 +87,7 @@ class Docker(base: Uri, outgoing: () => Graph[FlowShape[HttpRequest, HttpRespons
   }
 }
 
-/**
-  */
+/** */
 object Docker {
 
   def apply(host: String = fromEnv)(implicit system: ActorSystem): Docker = {
