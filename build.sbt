@@ -1,6 +1,6 @@
 lazy val akkaHttpVersion = "10.2.6"
-lazy val akkaVersion     = "2.6.17"
-lazy val oauth2Version   = "0.1.15"
+lazy val akkaVersion     = "2.6.16"
+lazy val oauth2Version   = "0.1.16"
 
 ThisBuild / dynverVTagPrefix := false
 
@@ -21,7 +21,7 @@ lazy val root = (project in file("."))
     dockerUsername         := Some("zhongl"),
     dockerUpdateLatest     := true,
     libraryDependencies ++= Seq(
-      "com.github.zhongl" %% "akka-stream-netty-all"       % "0.1.11",
+      "com.github.zhongl" %% "akka-stream-netty-all"       % "0.1.12",
       "com.github.scopt"  %% "scopt"                       % "4.0.1",
       "com.github.zhongl" %% "akka-stream-oauth2-dingtalk" % oauth2Version,
       "com.github.zhongl" %% "akka-stream-oauth2-wechat"   % oauth2Version,
