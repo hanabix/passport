@@ -1,5 +1,5 @@
-lazy val akkaHttpVersion = "10.2.6"
-lazy val akkaVersion     = "2.6.16"
+lazy val akkaHttpVersion = "10.2.7"
+lazy val akkaVersion     = "2.6.17"
 lazy val oauth2Version   = "0.1.17"
 
 ThisBuild / dynverVTagPrefix := false
@@ -7,7 +7,7 @@ ThisBuild / dynverVTagPrefix := false
 lazy val root = (project in file("."))
   .settings(
     organization           := "fun.zhongl",
-    scalaVersion           := "2.13.6",
+    scalaVersion           := "2.13.7",
     name                   := "passport",
     scalafmtOnCompile      := true,
     scalacOptions += "-deprecation",
@@ -21,7 +21,7 @@ lazy val root = (project in file("."))
     dockerUsername         := Some("zhongl"),
     dockerUpdateLatest     := true,
     libraryDependencies ++= Seq(
-      "com.github.zhongl" %% "akka-stream-netty-all"       % "0.1.12",
+      "com.github.zhongl" %% "akka-stream-netty-all"       % "0.1.13",
       "com.github.scopt"  %% "scopt"                       % "4.0.1",
       "com.github.zhongl" %% "akka-stream-oauth2-dingtalk" % oauth2Version,
       "com.github.zhongl" %% "akka-stream-oauth2-wechat"   % oauth2Version,
