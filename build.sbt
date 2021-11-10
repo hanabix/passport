@@ -21,14 +21,14 @@ lazy val root = (project in file("."))
     dockerUsername         := Some("zhongl"),
     dockerUpdateLatest     := true,
     libraryDependencies ++= Seq(
-      "com.github.zhongl" %% "akka-stream-netty-all"       % "0.1.12",
+      "com.github.zhongl" %% "akka-stream-netty-all"       % "0.1.13",
       "com.github.scopt"  %% "scopt"                       % "4.0.1",
       "com.github.zhongl" %% "akka-stream-oauth2-dingtalk" % oauth2Version,
       "com.github.zhongl" %% "akka-stream-oauth2-wechat"   % oauth2Version,
       "com.typesafe.akka" %% "akka-http-testkit"           % akkaHttpVersion % Test,
       "com.typesafe.akka" %% "akka-testkit"                % akkaVersion     % Test,
       "com.typesafe.akka" %% "akka-stream-testkit"         % akkaVersion     % Test,
-      "org.scalatest"     %% "scalatest"                   % "3.2.10"         % Test,
+      "org.scalatest"     %% "scalatest"                   % "3.2.10"        % Test,
       "org.scalamock"     %% "scalamock"                   % "5.1.0"         % Test
     )
   )
