@@ -29,7 +29,7 @@ lazy val root = (project in file("."))
       "com.typesafe.akka" %% "akka-testkit"                % akkaVersion     % Test,
       "com.typesafe.akka" %% "akka-stream-testkit"         % akkaVersion     % Test,
       "org.scalatest"     %% "scalatest"                   % "3.2.10"        % Test,
-      "org.scalamock"     %% "scalamock"                   % "5.1.0"         % Test
+      "org.scalamock"     %% "scalamock"                   % "5.2.0"         % Test
     )
   )
   .enablePlugins(JavaAppPackaging, AshScriptPlugin)
