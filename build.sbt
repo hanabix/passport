@@ -22,7 +22,7 @@ lazy val root = (project in file("."))
     dockerUpdateLatest     := true,
     libraryDependencies ++= Seq(
       "com.github.zhongl" %% "akka-stream-netty-all"       % "0.1.14",
-      "com.github.scopt"  %% "scopt"                       % "4.0.1",
+      "com.github.scopt"  %% "scopt"                       % "4.1.0",
       "com.github.zhongl" %% "akka-stream-oauth2-dingtalk" % oauth2Version,
       "com.github.zhongl" %% "akka-stream-oauth2-wechat"   % oauth2Version,
       "com.typesafe.akka" %% "akka-http-testkit"           % akkaHttpVersion % Test,
