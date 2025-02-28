@@ -6,6 +6,6 @@ addSbtPlugin("org.scoverage" % "sbt-coveralls" % "1.3.11")
 
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2")
 
-addSbtPlugin("com.github.sbt" % "sbt-dynver" % "5.0.1")
+addSbtPlugin("com.github.sbt" % "sbt-dynver" % "5.1.0")
 
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.9.16")
